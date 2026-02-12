@@ -1,3 +1,5 @@
+"use server";
+
 import { createClient } from "@/lib/supabase/server";
 
 export type AuditAction = 
@@ -110,7 +112,7 @@ export async function getRecentActions(action: AuditAction, limit = 10) {
 }
 
 // Middleware helper for request context
-export function getRequestContext(request: Request) {
+export async function getRequestContext(request: Request) {
   return {
     ip_address: request.headers.get("x-forwarded-for") || 
                  request.headers.get("x-real-ip") || 

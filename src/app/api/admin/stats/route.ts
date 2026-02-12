@@ -1,6 +1,6 @@
 import { createClient } from "@/lib/supabase/server";
 import { NextResponse } from "next/server";
-import { hasPermission } from "@/lib/rbac";
+import { hasPermission } from "@/lib/rbac-server";
 
 export async function GET() {
   const supabase = createClient();

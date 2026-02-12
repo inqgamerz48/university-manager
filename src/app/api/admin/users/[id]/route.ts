@@ -1,6 +1,6 @@
 import { createClient } from "@/lib/supabase/server";
 import { NextRequest, NextResponse } from "next/server";
-import { hasPermission, hasRole } from "@/lib/rbac";
+import { hasPermission, hasRole } from "@/lib/rbac-server";
 import { createAuditLog } from "@/lib/audit";
 
 export async function GET(

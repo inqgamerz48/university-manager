@@ -1,4 +1,4 @@
-import { createClient } from "@/lib/supabase/server";
+// Client-safe exports - no server imports
 
 export type Role = "STUDENT" | "FACULTY" | "ADMIN" | "SUPER_ADMIN";
 
@@ -11,7 +11,7 @@ export interface Permission {
 }
 
 // Role hierarchy: Higher roles inherit permissions from lower roles
-const ROLE_HIERARCHY: Record<Role, Role[]> = {
+export const ROLE_HIERARCHY: Record<Role, Role[]> = {
   STUDENT: [],
   FACULTY: ["STUDENT"],
   ADMIN: ["FACULTY", "STUDENT"],
@@ -91,7 +91,7 @@ export const PERMISSIONS: Record<string, Permission> = {
 };
 
 // Default role-permission mapping
-const DEFAULT_ROLE_PERMISSIONS: Record<Role, string[]> = {
+export const DEFAULT_ROLE_PERMISSIONS: Record<Role, string[]> = {
   STUDENT: [
     "users:read",
     "students:read",
@@ -170,70 +170,8 @@ const DEFAULT_ROLE_PERMISSIONS: Record<Role, string[]> = {
   SUPER_ADMIN: Object.keys(PERMISSIONS),
 };
 
-export async function getUserPermissions(userId: string): Promise<string[]> {
-  const supabase = createClient();
-
-  const { data: user } = await supabase
-    .from("users")
-    .select("role, institution_id")
-    .eq("id", userId)
-    .single();
-
-  if (!user) return [];
-
-  const role = user.role as Role;
-  const allRoles = [role, ...ROLE_HIERARCHY[role]];
-
-  const { data: rolePermissions } = await supabase
-    .from("role_permissions")
-    .select("permission_code")
-    .in("role", allRoles);
-
-  const permissions = new Set<string>();
-
-  // Add role-based permissions
-  for (const r of allRoles) {
-    DEFAULT_ROLE_PERMISSIONS[r]?.forEach((p) => permissions.add(p));
-  }
-
-  // Add custom role permissions
-  rolePermissions?.forEach((rp) => permissions.add(rp.permission_code));
-
-  return Array.from(permissions);
-}
-
-export async function hasPermission(userId: string, permission: string): Promise<boolean> {
-  const permissions = await getUserPermissions(userId);
-  return permissions.includes(permission);
-}
-
-export async function hasAnyPermission(userId: string, permissionList: string[]): Promise<boolean> {
-  const permissions = await getUserPermissions(userId);
-  return permissionList.some((p) => permissions.includes(p));
-}
-
-export async function hasAllPermissions(userId: string, permissionList: string[]): Promise<boolean> {
-  const permissions = await getUserPermissions(userId);
-  return permissionList.every((p) => permissions.includes(p));
-}
-
-export async function hasRole(userId: string, roles: Role | Role[]): Promise<boolean> {
-  const supabase = createClient();
-  const roleArray = Array.isArray(roles) ? roles : [roles];
-
-  const { data: user } = await supabase
-    .from("users")
-    .select("role")
-    .eq("id", userId)
-    .single();
-
-  if (!user) return false;
-
-  return roleArray.includes(user.role as Role) || 
-         ROLE_HIERARCHY[user.role as Role]?.some((h) => roleArray.includes(h));
-}
-
-export async function getRoleHierarchy(role: Role): Promise<Role[]> {
+// Client-side helper functions (no server imports)
+export function getRoleHierarchy(role: Role): Role[] {
   const hierarchy: Role[] = [role];
   let current = role;
   
@@ -245,18 +183,6 @@ export async function getRoleHierarchy(role: Role): Promise<Role[]> {
   return hierarchy;
 }
 
-export function canAccessEntity(userId: string, entityUserId: string, permission: string): boolean {
-  return userId === entityUserId;
-}
-
-export function requirePermission(permission: string) {
-  return async (userId: string): Promise<{ allowed: boolean; error?: string }> => {
-    const hasAccess = await hasPermission(userId, permission);
-    
-    if (!hasAccess) {
-      return { allowed: false, error: `Permission denied: ${permission}` };
-    }
-    
-    return { allowed: true };
-  };
+export function getDefaultPermissions(role: Role): string[] {
+  return DEFAULT_ROLE_PERMISSIONS[role] || [];
 }

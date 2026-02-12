@@ -14,6 +14,29 @@ enum Role {
   SUPER_ADMIN
 }
 
+enum CourseType {
+  B_TECH
+  DIPLOMA
+}
+
+enum AcademicYear {
+  YEAR_1
+  YEAR_2
+  YEAR_3
+  YEAR_4
+}
+
+enum Semester {
+  SEM_1
+  SEM_2
+  SEM_3
+  SEM_4
+  SEM_5
+  SEM_6
+  SEM_7
+  SEM_8
+}
+
 enum AttendanceStatus {
   PRESENT
   ABSENT
@@ -28,43 +51,168 @@ enum ComplaintStatus {
   CLOSED
 }
 
-model Institution {
-  id          String    @id @default(cuid())
-  name        String    @default("My College")
-  code        String    @unique @default("CM")
-  college_code String   @default("622")
-  is_active   Boolean   @default(true)
-  created_at  DateTime  @default(now())
-  updated_at  DateTime  @updatedAt
+enum FeeStatus {
+  PENDING
+  PAID
+  OVERDUE
+  WAIVED
+}
 
-  users       User[]
-  students    StudentPreImport[]
+enum NotificationType {
+  ASSIGNMENT
+  ATTENDANCE
+  NOTICE
+  COMPLAINT
+  FEE
+  GRADE
+  GENERAL
+}
+
+enum InstitutionType {
+  ENGINEERING
+  POLYTECHNIC
+  BOTH
+}
+
+model Institution {
+  id              String    @id @default(cuid())
+  name            String
+  code            String    @unique
+  college_code     String
+  type            InstitutionType @default(ENGINEERING)
+  address         String?
+  phone           String?
+  email           String?
+  is_active       Boolean   @default(true)
+  created_at      DateTime  @default(now())
+  updated_at      DateTime  @updatedAt
+
+  users           User[]
+  students        Student[]
+  faculty         Faculty[]
+  branches        Branch[]
+  subjects        Subject[]
+  fee_structures  FeeStructure[]
+  notifications   Notification[]
 
   @@index([code])
 }
 
-model StudentPreImport {
+model Branch {
+  id              String      @id @default(cuid())
+  institution_id  String
+  name            String
+  code            String
+  course_type     CourseType
+  duration_years  Int         @default(4)
+  is_active       Boolean     @default(true)
+  created_at      DateTime    @default(now())
+  updated_at      DateTime    @updatedAt
+
+  institution     Institution @relation(fields: [institution_id], references: [id])
+  students        Student[]
+  faculty         Faculty[]
+  subjects        Subject[]
+
+  @@unique([institution_id, code])
+  @@index([institution_id])
+  @@index([course_type])
+}
+
+model Student {
   id              String    @id @default(cuid())
-  institution_id String
-  pin_number      String
-  first_name      String
-  last_name       String?
-  email           String?
-  year            String
-  semester        String
-  course_code     String
-  course_name     String
-  is_registered   Boolean   @default(false)
-  registered_at   DateTime?
+  user_id         String    @unique
+  institution_id  String
+  branch_id       String
+  pin_number      String    @unique
+  admission_year  Int
+  roll_number     String?
+  academic_year   AcademicYear @default(YEAR_1)
+  current_semester Semester   @default(SEM_1)
+  is_active       Boolean   @default(true)
+  created_at      DateTime  @default(now())
+  updated_at      DateTime  @updatedAt
+
+  user            User      @relation(fields: [user_id], references: [id], onDelete: Cascade)
+  institution     Institution @relation(fields: [institution_id], references: [id])
+  branch          Branch    @relation(fields: [branch_id], references: [id])
+  enrollments     Enrollment[]
+  fee_payments    FeePayment[]
+  attendances     Attendance[]
+  submissions     Submission[]
+
+  @@index([institution_id])
+  @@index([branch_id])
+  @@index([pin_number])
+  @@index([admission_year])
+}
+
+model Faculty {
+  id              String    @id @default(cuid())
+  user_id         String    @unique
+  institution_id  String
+  branch_id       String?
+  employee_id     String    @unique
+  designation     String?
+  specialization  String?
+  is_active       Boolean   @default(true)
+  created_at      DateTime  @default(now())
+  updated_at      DateTime  @updatedAt
+
+  user            User      @relation(fields: [user_id], references: [id], onDelete: Cascade)
+  institution     Institution @relation(fields: [institution_id], references: [id])
+  branch          Branch?   @relation(fields: [branch_id], references: [id])
+  subjects        Subject[]
+  enrollments     Enrollment[]
+
+  @@index([institution_id])
+  @@index([branch_id])
+}
+
+model Subject {
+  id              String    @id @default(cuid())
+  code            String
+  name            String
+  credits         Int       @default(3)
+  institution_id  String
+  branch_id       String?
+  faculty_id      String?
+  semester        Semester
+  academic_year   String
+  is_active       Boolean   @default(true)
   created_at      DateTime  @default(now())
   updated_at      DateTime  @updatedAt
 
   institution     Institution @relation(fields: [institution_id], references: [id])
+  branch          Branch?   @relation(fields: [branch_id], references: [id])
+  faculty         Faculty?   @relation(fields: [faculty_id], references: [id])
+  enrollments     Enrollment[]
+  assignments     Assignment[]
+  attendances     Attendance[]
 
-  @@unique([institution_id, pin_number])
+  @@unique([institution_id, code])
   @@index([institution_id])
-  @@index([pin_number])
-  @@index([is_registered])
+  @@index([branch_id])
+  @@index([faculty_id])
+  @@index([semester])
+}
+
+model Enrollment {
+  id              String    @id @default(cuid())
+  student_id      String
+  subject_id      String
+  faculty_id      String
+  enrollment_date DateTime  @default(now())
+  is_active       Boolean   @default(true)
+
+  student         Student   @relation(fields: [student_id], references: [id], onDelete: Cascade)
+  subject         Subject   @relation(fields: [subject_id], references: [id], onDelete: Cascade)
+  faculty         Faculty   @relation(fields: [faculty_id], references: [id])
+
+  @@unique([student_id, subject_id])
+  @@index([student_id])
+  @@index([subject_id])
+  @@index([faculty_id])
 }
 
 model User {
@@ -80,11 +228,11 @@ model User {
 
   institution     Institution? @relation(fields: [institution_id], references: [id])
   profile         Profile?
-  assignments_faculty  Assignment[]  @relation("FacultyAssignments")
   submissions     Submission[]
   attendances     Attendance[]
-  complaints     Complaint[]
-  notices        Notice[]
+  complaints      Complaint[]
+  notices         Notice[]
+  notifications   Notification[]
 
   @@index([email])
   @@index([role])
@@ -97,10 +245,6 @@ model Profile {
   user_id       String  @unique
   full_name     String
   pin_number    String?
-  year          String?
-  semester      String?
-  course_code   String?
-  course_name   String?
   avatar_url    String?
   phone         String?
   department    String?
@@ -121,19 +265,18 @@ model Assignment {
   instructions  String?
   due_date      DateTime
   max_grade     Float     @default(100)
-  subject_code  String
-  subject_name  String
+  subject_id    String
   faculty_id    String
   is_active     Boolean   @default(true)
   created_at    DateTime  @default(now())
   updated_at    DateTime  @updatedAt
 
-  faculty       User      @relation("FacultyAssignments", fields: [faculty_id], references: [id])
+  subject       Subject   @relation(fields: [subject_id], references: [id])
   submissions   Submission[]
 
+  @@index([subject_id])
   @@index([faculty_id])
   @@index([due_date])
-  @@index([subject_code])
 }
 
 model Submission {
@@ -150,7 +293,7 @@ model Submission {
   updated_at    DateTime  @updatedAt
 
   assignment    Assignment @relation(fields: [assignment_id], references: [id], onDelete: Cascade)
-  student       User       @relation(fields: [student_id], references: [id])
+  student       User      @relation(fields: [student_id], references: [id])
 
   @@unique([assignment_id, student_id])
   @@index([assignment_id])
@@ -160,19 +303,20 @@ model Submission {
 model Attendance {
   id            String           @id @default(cuid())
   student_id    String
+  subject_id    String
   date          DateTime         @db.Date
   status        AttendanceStatus
-  subject_code  String
   marked_by     String
   created_at    DateTime         @default(now())
   updated_at    DateTime         @updatedAt
 
   student       User             @relation(fields: [student_id], references: [id])
+  subject       Subject          @relation(fields: [subject_id], references: [id])
 
-  @@unique([student_id, date, subject_code])
+  @@unique([student_id, date, subject_id])
   @@index([student_id])
+  @@index([subject_id])
   @@index([date])
-  @@index([subject_code])
 }
 
 model Notice {
@@ -217,18 +361,26 @@ model Complaint {
 }
 
 model FeeStructure {
-  id            String    @id @default(cuid())
-  name          String
-  amount        Float
-  category      String
-  academic_year String
-  due_date      DateTime
-  is_active     Boolean   @default(true)
-  created_at    DateTime  @default(now())
-  updated_at    DateTime  @updatedAt
+  id              String    @id @default(cuid())
+  name            String
+  amount          Float
+  category        String
+  academic_year   String
+  course_type     CourseType
+  branch_id       String?
+  due_date        DateTime
+  is_active       Boolean   @default(true)
+  created_at      DateTime  @default(now())
+  updated_at      DateTime  @updatedAt
 
+  institution     Institution @relation(fields: [institution_id], references: [id])
+  institution_id  String
+  payments        FeePayment[]
+
+  @@index([institution_id])
   @@index([academic_year])
-  @@index([category])
+  @@index([course_type])
+  @@index([branch_id])
 }
 
 model FeePayment {
@@ -236,38 +388,40 @@ model FeePayment {
   student_id      String
   fee_id          String
   amount          Float
-  payment_method  String
+  payment_method  String?
   transaction_id  String?
-  status          String    @default("pending")
+  status          FeeStatus @default(PENDING)
   paid_at         DateTime?
+  due_date        DateTime
   created_at      DateTime  @default(now())
   updated_at      DateTime  @updatedAt
+
+  student         Student   @relation(fields: [student_id], references: [id])
+  fee_structure   FeeStructure @relation(fields: [fee_id], references: [id])
 
   @@index([student_id])
   @@index([fee_id])
   @@index([status])
 }
 
-model Subject {
-  id            String    @id @default(cuid())
-  code          String    @unique
-  name          String
-  credits       Int       @default(3)
-  department    String
-  semester      String
-  academic_year String
-  faculty_id    String?
-  created_at    DateTime  @default(now())
-  updated_at    DateTime  @updatedAt
+model Notification {
+  id              String            @id @default(cuid())
+  title           String
+  message         String
+  type            NotificationType
+  institution_id  String?
+  is_read         Boolean           @default(false)
+  created_at      DateTime          @default(now())
 
-  @@index([code])
-  @@index([department])
-  @@index([faculty_id])
+  institution     Institution?       @relation(fields: [institution_id], references: [id])
+  user            User?             @relation(fields: [user_id], references: [id])
+  user_id         String?
+
+  @@index([institution_id])
+  @@index([user_id])
+  @@index([type])
+  @@index([created_at])
 }
-
-// ============================================
-// RBAC Models
-// ============================================
 
 model Permission {
   id          String    @id @default(cuid())

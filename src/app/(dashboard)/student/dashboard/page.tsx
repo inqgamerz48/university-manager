@@ -1,24 +1,74 @@
 "use client";
 
+import { useEffect } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { FileText, Bell, Clock, TrendingUp, User, BookOpen } from "lucide-react";
+import { Progress } from "@/components/ui/progress";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
-
-const upcomingAssignments = [
-  { id: 1, title: "Database Systems Project", subject: "CS301", dueDate: "2026-02-15", daysLeft: 4 },
-  { id: 2, title: "Operating Systems Lab", subject: "CS305", dueDate: "2026-02-18", daysLeft: 7 },
-  { id: 3, title: "Web Development Assignment", subject: "CS401", dueDate: "2026-02-20", daysLeft: 9 },
-];
-
-const recentNotices = [
-  { id: 1, title: "Mid-Semester Exams Schedule", category: "academic", date: "2026-02-10" },
-  { id: 2, title: "Library Book Renewal Notice", category: "general", date: "2026-02-08" },
-  { id: 3, title: "Hackathon 2026 Registration", category: "event", date: "2026-02-05" },
-];
+import {
+  GraduationCap, BookOpen, Calendar, Bell, FileText, AlertCircle,
+  DollarSign, Clock, CheckCircle, XCircle
+} from "lucide-react";
+import {
+  useStudentAssignments, useStudentNotices, useStudentComplaints,
+  useStudentFeeStatus, useStudentAttendance
+} from "@/hooks/use-dashboard";
+import { useAuthStore } from "@/stores/auth-store";
+import { useRouter } from "next/navigation";
 
 export default function StudentDashboard() {
+  const { user } = useAuthStore();
+  const router = useRouter();
+  const { assignments, loading: assignmentsLoading } = useStudentAssignments();
+  const { notices, loading: noticesLoading } = useStudentNotices();
+  const { complaints, loading: complaintsLoading } = useStudentComplaints();
+  const { feeStatus, loading: feeLoading } = useStudentFeeStatus();
+  const { attendance, loading: attendanceLoading } = useStudentAttendance();
+
+  const upcomingAssignments = assignments
+    .filter((a) => !a.submitted && new Date(a.due_date) > new Date())
+    .sort((a, b) => new Date(a.due_date).getTime() - new Date(b.due_date).getTime())
+    .slice(0, 5);
+
+  const recentNotices = notices.slice(0, 5);
+
+  const activeComplaints = complaints.filter(
+    (c) => c.status === "PENDING" || c.status === "IN_PROGRESS"
+  );
+
+  const formatDate = (dateString: string) => {
+    return new Date(dateString).toLocaleDateString("en-IN", {
+      day: "numeric",
+      month: "short",
+      year: "numeric",
+    });
+  };
+
+  const formatTime = (dateString: string) => {
+    const date = new Date(dateString);
+    const now = new Date();
+    const diffMs = now.getTime() - date.getTime();
+    const diffHours = Math.floor(diffMs / 3600000);
+    const diffDays = Math.floor(diffMs / 86400000);
+
+    if (diffHours < 1) return "Just now";
+    if (diffHours < 24) return `${diffHours}h ago`;
+    return `${diffDays}d ago`;
+  };
+
+  const getDaysUntilDue = (dueDate: string) => {
+    const due = new Date(dueDate);
+    const now = new Date();
+    const diffMs = due.getTime() - now.getTime();
+    const diffDays = Math.ceil(diffMs / 86400000);
+    return diffDays;
+  };
+
+  const attendancePercentage = attendance.length > 0
+    ? Math.round(attendance.reduce((acc, a) => acc + a.percentage, 0) / attendance.length)
+    : 0;
+
   return (
     <div className="min-h-screen bg-background">
       <header className="border-b border-border sticky top-0 bg-background/95 backdrop-blur z-10">
@@ -34,36 +84,42 @@ export default function StudentDashboard() {
               <Bell className="h-5 w-5" />
             </Button>
             <Avatar>
-              <AvatarFallback className="bg-gold-500 text-black">JD</AvatarFallback>
+              <AvatarFallback className="bg-gold-500 text-black">
+                {user?.fullName?.substring(0, 2).toUpperCase() || "ST"}
+              </AvatarFallback>
             </Avatar>
           </div>
         </div>
       </header>
 
       <main className="container mx-auto px-4 py-8">
-        <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
-          <Card className="glass-card">
-            <CardContent className="pt-6">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm text-muted-foreground">Assignments</p>
-                  <p className="text-3xl font-bold">5</p>
-                  <p className="text-xs text-gold-500">3 due this week</p>
-                </div>
-                <FileText className="h-10 w-10 text-gold-500" />
-              </div>
-            </CardContent>
-          </Card>
+        <div className="mb-8">
+          <h1 className="text-3xl font-bold">Welcome, {user?.fullName || "Student"}</h1>
+          <p className="text-muted-foreground">Here's your academic overview</p>
+        </div>
 
+        <div className="grid gap-6 lg:grid-cols-3 mb-8">
           <Card className="glass-card">
             <CardContent className="pt-6">
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-sm text-muted-foreground">Attendance</p>
-                  <p className="text-3xl font-bold">92%</p>
-                  <p className="text-xs text-green-500">Excellent</p>
+                  {attendanceLoading ? (
+                    <div className="h-9 w-24 bg-muted animate-pulse rounded" />
+                  ) : (
+                    <>
+                      <p className="text-3xl font-bold">{attendancePercentage}%</p>
+                      <Progress value={attendancePercentage} className="mt-2 h-2" />
+                    </>
+                  )}
                 </div>
-                <TrendingUp className="h-10 w-10 text-green-500" />
+                <div className={`h-12 w-12 rounded-full flex items-center justify-center ${
+                  attendancePercentage >= 75 ? "bg-green-500/10" : "bg-red-500/10"
+                }`}>
+                  <Calendar className={`h-6 w-6 ${
+                    attendancePercentage >= 75 ? "text-green-500" : "text-red-500"
+                  }`} />
+                </div>
               </div>
             </CardContent>
           </Card>
@@ -72,11 +128,17 @@ export default function StudentDashboard() {
             <CardContent className="pt-6">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm text-muted-foreground"> GPA</p>
-                  <p className="text-3xl font-bold">8.5</p>
-                  <p className="text-xs text-green-500">+0.2 this semester</p>
+                  <p className="text-sm text-muted-foreground">Pending Assignments</p>
+                  {assignmentsLoading ? (
+                    <div className="h-9 w-24 bg-muted animate-pulse rounded" />
+                  ) : (
+                    <p className="text-3xl font-bold">{upcomingAssignments.length}</p>
+                  )}
+                  <p className="text-xs text-muted-foreground mt-1">Due soon</p>
                 </div>
-                <BookOpen className="h-10 w-10 text-blue-500" />
+                <div className="h-12 w-12 rounded-full bg-blue-500/10 flex items-center justify-center">
+                  <BookOpen className="h-6 w-6 text-blue-500" />
+                </div>
               </div>
             </CardContent>
           </Card>
@@ -85,64 +147,252 @@ export default function StudentDashboard() {
             <CardContent className="pt-6">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm text-muted-foreground">Notices</p>
-                  <p className="text-3xl font-bold">12</p>
-                  <p className="text-xs text-blue-500">3 unread</p>
+                  <p className="text-sm text-muted-foreground">Fee Due</p>
+                  {feeLoading ? (
+                    <div className="h-9 w-24 bg-muted animate-pulse rounded" />
+                  ) : (
+                    <>
+                      <p className="text-3xl font-bold">
+                        ₹{(feeStatus?.total_pending || 0).toLocaleString()}
+                      </p>
+                      {feeStatus?.overdue > 0 && (
+                        <p className="text-xs text-red-500 mt-1">
+                          ₹{feeStatus.overdue.toLocaleString()} overdue
+                        </p>
+                      )}
+                    </>
+                  )}
                 </div>
-                <Bell className="h-10 w-10 text-blue-500" />
+                <div className="h-12 w-12 rounded-full bg-gold-500/10 flex items-center justify-center">
+                  <DollarSign className="h-6 w-6 text-gold-500" />
+                </div>
               </div>
             </CardContent>
           </Card>
         </div>
 
-        <div className="grid gap-6 lg:grid-cols-2 mt-8">
+        <div className="grid gap-6 lg:grid-cols-2">
           <Card className="glass-card">
-            <CardHeader>
-              <CardTitle className="flex items-center space-x-2">
-                <Clock className="h-5 w-5 text-gold-500" />
-                <span>Upcoming Assignments</span>
-              </CardTitle>
-              <CardDescription>Your pending assignments and deadlines</CardDescription>
+            <CardHeader className="flex flex-row items-center justify-between">
+              <div>
+                <CardTitle className="flex items-center space-x-2">
+                  <BookOpen className="h-5 w-5 text-gold-500" />
+                  <span>Upcoming Assignments</span>
+                </CardTitle>
+                <CardDescription>Assignments due soon</CardDescription>
+              </div>
+              <Button variant="ghost" size="sm" onClick={() => router.push("/student/assignments")}>
+                View All
+              </Button>
             </CardHeader>
             <CardContent>
-              <div className="space-y-4">
-                {upcomingAssignments.map((assignment) => (
-                  <div key={assignment.id} className="flex items-center justify-between p-4 rounded-lg bg-muted/50">
-                    <div>
-                      <p className="font-medium">{assignment.title}</p>
-                      <p className="text-sm text-muted-foreground">{assignment.subject}</p>
-                    </div>
-                    <div className="text-right">
-                      <Badge variant={assignment.daysLeft <= 5 ? "destructive" : "secondary"}>
-                        {assignment.daysLeft} days left
-                      </Badge>
-                    </div>
-                  </div>
-                ))}
-              </div>
+              {assignmentsLoading ? (
+                <div className="space-y-4">
+                  {[1, 2, 3].map((i) => (
+                    <div key={i} className="h-16 bg-muted animate-pulse rounded-lg" />
+                  ))}
+                </div>
+              ) : upcomingAssignments.length > 0 ? (
+                <div className="space-y-4">
+                  {upcomingAssignments.map((assignment) => {
+                    const daysLeft = getDaysUntilDue(assignment.due_date);
+                    return (
+                      <div
+                        key={assignment.id}
+                        className="flex items-center justify-between p-4 rounded-lg bg-muted/50 hover:bg-muted/70 transition-colors cursor-pointer"
+                        onClick={() => router.push(`/student/assignments/${assignment.id}`)}
+                      >
+                        <div className="flex-1">
+                          <p className="font-medium">{assignment.title}</p>
+                          <p className="text-sm text-muted-foreground">
+                            {assignment.subject_name} • Due {formatDate(assignment.due_date)}
+                          </p>
+                        </div>
+                        <Badge
+                          variant={
+                            daysLeft <= 1 ? "destructive" :
+                            daysLeft <= 3 ? "warning" :
+                            "outline"
+                          }
+                        >
+                          {daysLeft <= 0 ? "Overdue" : `${daysLeft}d left`}
+                        </Badge>
+                      </div>
+                    );
+                  })}
+                </div>
+              ) : (
+                <div className="text-center py-8 text-muted-foreground">
+                  <CheckCircle className="h-12 w-12 mx-auto mb-4 opacity-50" />
+                  <p>No upcoming assignments</p>
+                  <p className="text-sm">You're all caught up!</p>
+                </div>
+              )}
             </CardContent>
           </Card>
 
           <Card className="glass-card">
-            <CardHeader>
-              <CardTitle className="flex items-center space-x-2">
-                <Bell className="h-5 w-5 text-blue-500" />
-                <span>Recent Notices</span>
-              </CardTitle>
-              <CardDescription>Latest announcements and updates</CardDescription>
+            <CardHeader className="flex flex-row items-center justify-between">
+              <div>
+                <CardTitle className="flex items-center space-x-2">
+                  <Bell className="h-5 w-5 text-blue-500" />
+                  <span>Recent Notices</span>
+                </CardTitle>
+                <CardDescription>Latest announcements</CardDescription>
+              </div>
+              <Button variant="ghost" size="sm" onClick={() => router.push("/student/notices")}>
+                View All
+              </Button>
             </CardHeader>
             <CardContent>
-              <div className="space-y-4">
-                {recentNotices.map((notice) => (
-                  <div key={notice.id} className="p-4 rounded-lg bg-muted/50">
-                    <div className="flex items-center justify-between mb-2">
-                      <p className="font-medium">{notice.title}</p>
-                      <Badge variant="outline">{notice.category}</Badge>
+              {noticesLoading ? (
+                <div className="space-y-4">
+                  {[1, 2, 3].map((i) => (
+                    <div key={i} className="h-16 bg-muted animate-pulse rounded-lg" />
+                  ))}
+                </div>
+              ) : recentNotices.length > 0 ? (
+                <div className="space-y-4">
+                  {recentNotices.map((notice) => (
+                    <div
+                      key={notice.id}
+                      className="p-4 rounded-lg bg-muted/50 hover:bg-muted/70 transition-colors"
+                    >
+                      <div className="flex items-start justify-between mb-2">
+                        <p className="font-medium">{notice.title}</p>
+                        <Badge
+                          variant={notice.priority === "high" ? "destructive" : "outline"}
+                        >
+                          {notice.priority}
+                        </Badge>
+                      </div>
+                      <p className="text-sm text-muted-foreground line-clamp-2">
+                        {notice.content}
+                      </p>
+                      <p className="text-xs text-muted-foreground mt-2">
+                        {notice.published_by_name} • {formatTime(notice.published_at)}
+                      </p>
                     </div>
-                    <p className="text-sm text-muted-foreground">{notice.date}</p>
-                  </div>
-                ))}
+                  ))}
+                </div>
+              ) : (
+                <div className="text-center py-8 text-muted-foreground">
+                  <Bell className="h-12 w-12 mx-auto mb-4 opacity-50" />
+                  <p>No recent notices</p>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+
+          <Card className="glass-card">
+            <CardHeader className="flex flex-row items-center justify-between">
+              <div>
+                <CardTitle className="flex items-center space-x-2">
+                  <AlertCircle className="h-5 w-5 text-red-500" />
+                  <span>My Complaints</span>
+                </CardTitle>
+                <CardDescription>Track your complaint status</CardDescription>
               </div>
+              <Button variant="ghost" size="sm" onClick={() => router.push("/student/complaints")}>
+                View All
+              </Button>
+            </CardHeader>
+            <CardContent>
+              {complaintsLoading ? (
+                <div className="space-y-4">
+                  {[1, 2, 3].map((i) => (
+                    <div key={i} className="h-16 bg-muted animate-pulse rounded-lg" />
+                  ))}
+                </div>
+              ) : activeComplaints.length > 0 ? (
+                <div className="space-y-4">
+                  {activeComplaints.slice(0, 5).map((complaint) => (
+                    <div
+                      key={complaint.id}
+                      className="flex items-center justify-between p-4 rounded-lg bg-muted/50"
+                    >
+                      <div>
+                        <p className="font-medium">{complaint.title}</p>
+                        <p className="text-sm text-muted-foreground">
+                          {complaint.category} • {formatTime(complaint.created_at)}
+                        </p>
+                      </div>
+                      <Badge
+                        variant={
+                          complaint.status === "PENDING" ? "warning" :
+                          complaint.status === "IN_PROGRESS" ? "default" :
+                          "secondary"
+                        }
+                      >
+                        {complaint.status.replace(/_/g, " ")}
+                      </Badge>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="text-center py-8 text-muted-foreground">
+                  <CheckCircle className="h-12 w-12 mx-auto mb-4 opacity-50" />
+                  <p>No active complaints</p>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+
+          <Card className="glass-card">
+            <CardHeader className="flex flex-row items-center justify-between">
+              <div>
+                <CardTitle className="flex items-center space-x-2">
+                  <DollarSign className="h-5 w-5 text-green-500" />
+                  <span>Fee Status</span>
+                </CardTitle>
+                <CardDescription>Your fee payments</CardDescription>
+              </div>
+            </CardHeader>
+            <CardContent>
+              {feeLoading ? (
+                <div className="space-y-4">
+                  <div className="h-16 bg-muted animate-pulse rounded-lg" />
+                  <div className="h-16 bg-muted animate-pulse rounded-lg" />
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  <div className="flex items-center justify-between p-4 rounded-lg bg-green-500/10 border border-green-500/20">
+                    <div className="flex items-center space-x-3">
+                      <CheckCircle className="h-5 w-5 text-green-500" />
+                      <div>
+                        <p className="font-medium">Paid</p>
+                        <p className="text-sm text-muted-foreground">
+                          ₹{(feeStatus?.total_paid || 0).toLocaleString()}
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                  <div className="flex items-center justify-between p-4 rounded-lg bg-yellow-500/10 border border-yellow-500/20">
+                    <div className="flex items-center space-x-3">
+                      <Clock className="h-5 w-5 text-yellow-500" />
+                      <div>
+                        <p className="font-medium">Pending</p>
+                        <p className="text-sm text-muted-foreground">
+                          ₹{(feeStatus?.total_pending || 0).toLocaleString()}
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                  {feeStatus && feeStatus.overdue > 0 && (
+                    <div className="flex items-center justify-between p-4 rounded-lg bg-red-500/10 border border-red-500/20">
+                      <div className="flex items-center space-x-3">
+                        <XCircle className="h-5 w-5 text-red-500" />
+                        <div>
+                          <p className="font-medium">Overdue</p>
+                          <p className="text-sm text-muted-foreground">
+                            ₹{feeStatus.overdue.toLocaleString()}
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
             </CardContent>
           </Card>
         </div>

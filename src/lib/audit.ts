@@ -19,7 +19,7 @@ export interface AuditLogEntry {
 }
 
 export async function createAuditLog(entry: AuditLogEntry): Promise<void> {
-  const supabase = createClient();
+  const supabase = await createClient();
 
   try {
     await supabase.from("audit_logs").insert({
@@ -47,7 +47,7 @@ export async function getAuditLogs(filters?: {
   limit?: number;
   offset?: number;
 }) {
-  const supabase = createClient();
+  const supabase = await createClient();
 
   let query = supabase
     .from("audit_logs")
@@ -81,8 +81,8 @@ export async function getAuditLogs(filters?: {
   if (filters?.limit) {
     query = query.limit(filters.limit);
   }
-  if (filters?.offset) {
-    query = query.offset(filters.offset);
+  if (filters?.offset !== undefined && filters?.limit) {
+    query = query.range(filters.offset, filters.offset + filters.limit - 1);
   }
 
   const { data, error } = await query;

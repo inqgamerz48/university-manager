@@ -4,7 +4,7 @@ import { createClient } from "@/lib/supabase/server";
 import { revalidatePath } from "next/cache";
 
 export async function createComplaint(formData: FormData) {
-  const supabase = createClient();
+  const supabase = await createClient();
   
   const title = formData.get("title") as string;
   const description = formData.get("description") as string;
@@ -29,7 +29,7 @@ export async function createComplaint(formData: FormData) {
 }
 
 export async function getStudentComplaints(studentId: string) {
-  const supabase = createClient();
+  const supabase = await createClient();
   
   const { data, error } = await supabase
     .from("complaints")
@@ -42,7 +42,7 @@ export async function getStudentComplaints(studentId: string) {
 }
 
 export async function getAllComplaints(filters?: { status?: string; category?: string }) {
-  const supabase = createClient();
+  const supabase = await createClient();
   
   let query = supabase
     .from("complaints")
@@ -73,7 +73,7 @@ export async function updateComplaintStatus(
   status: string,
   resolution?: string
 ) {
-  const supabase = createClient();
+  const supabase = await createClient();
   
   const updateData: Record<string, unknown> = {
     status,

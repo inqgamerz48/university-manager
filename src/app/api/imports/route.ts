@@ -3,7 +3,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { validatePIN, COLLEGE_CODE } from "@/lib/pin-validator";
 
 export async function POST(request: NextRequest) {
-  const supabase = createClient();
+  const supabase = await createClient();
 
   try {
     const { data: { user }, error: authError } = await supabase.auth.getUser();
@@ -82,15 +82,20 @@ export async function POST(request: NextRequest) {
       errors: [] as { row: number; pin: string; error: string }[],
     };
 
+    interface ImportRow {
+      [key: string]: string | number | undefined;
+    }
+
     for (let i = 0; i < records.length; i++) {
-      const row = records[i];
+      const row = records[i] as ImportRow;
       const rowNumber = i + 2;
 
       try {
-        const pin = row["PIN"]?.toString().trim().toUpperCase();
+        const pinValue = row["PIN"]?.toString().trim().toUpperCase();
+        const pin = pinValue || "";
         const pinValidation = validatePIN(pin);
 
-        if (!pin) {
+        if (!pinValue) {
           results.errors.push({
             row: rowNumber,
             pin: pin || "UNKNOWN",
@@ -166,7 +171,7 @@ export async function POST(request: NextRequest) {
 }
 
 export async function GET(request: NextRequest) {
-  const supabase = createClient();
+  const supabase = await createClient();
 
   try {
     const { data: { user }, error: authError } = await supabase.auth.getUser();

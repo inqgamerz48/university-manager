@@ -4,7 +4,7 @@ import { createClient } from "@/lib/supabase/server";
 import { revalidatePath } from "next/cache";
 
 export async function markAttendance(formData: FormData) {
-  const supabase = createClient();
+  const supabase = await createClient();
   
   const studentId = formData.get("studentId") as string;
   const date = formData.get("date") as string;
@@ -31,7 +31,7 @@ export async function markAttendance(formData: FormData) {
 }
 
 export async function getStudentAttendance(studentId: string, month?: string) {
-  const supabase = createClient();
+  const supabase = await createClient();
   
   let query = supabase
     .from("attendance")
@@ -48,7 +48,7 @@ export async function getStudentAttendance(studentId: string, month?: string) {
 }
 
 export async function getClassAttendance(subjectCode: string, date: string) {
-  const supabase = createClient();
+  const supabase = await createClient();
   
   const { data, error } = await supabase
     .from("attendance")

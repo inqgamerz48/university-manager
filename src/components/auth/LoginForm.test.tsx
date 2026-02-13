@@ -1,7 +1,7 @@
 import { render, screen, fireEvent, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { LoginForm } from "@/components/auth/LoginForm";
-import { useAuthStore } from "@/stores/auth-store";
+import { useAuthStore, UserRole } from "@/stores/auth-store";
 import { createClient } from "@/lib/supabase/client";
 import "@testing-library/jest-dom";
 
@@ -142,7 +142,7 @@ describe("Auth Store", () => {
     const mockUser = {
       id: "123",
       email: "test@example.com",
-      role: "STUDENT",
+      role: "STUDENT" as UserRole,
       fullName: "Test User",
     };
     
@@ -160,7 +160,7 @@ describe("Auth Store", () => {
     const mockUser = {
       id: "123",
       email: "test@example.com",
-      role: "STUDENT",
+      role: "STUDENT" as UserRole,
       fullName: "Test User",
     };
     

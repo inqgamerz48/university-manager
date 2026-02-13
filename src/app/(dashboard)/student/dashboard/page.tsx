@@ -155,7 +155,7 @@ export default function StudentDashboard() {
                       <p className="text-3xl font-bold">
                         ₹{(feeStatus?.total_pending || 0).toLocaleString()}
                       </p>
-                      {feeStatus?.overdue > 0 && (
+                      {feeStatus && feeStatus.overdue && feeStatus.overdue > 0 && (
                         <p className="text-xs text-red-500 mt-1">
                           ₹{feeStatus.overdue.toLocaleString()} overdue
                         </p>

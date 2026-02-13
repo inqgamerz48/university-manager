@@ -4,7 +4,7 @@ import { createClient } from "@/lib/supabase/server";
 import { revalidatePath } from "next/cache";
 
 export async function createAssignment(formData: FormData) {
-  const supabase = createClient();
+  const supabase = await createClient();
   
   const title = formData.get("title") as string;
   const description = formData.get("description") as string;
@@ -31,7 +31,7 @@ export async function createAssignment(formData: FormData) {
 }
 
 export async function getAssignments(facultyId?: string) {
-  const supabase = createClient();
+  const supabase = await createClient();
   
   let query = supabase
     .from("assignments")
@@ -48,7 +48,7 @@ export async function getAssignments(facultyId?: string) {
 }
 
 export async function getStudentAssignments(studentId?: string) {
-  const supabase = createClient();
+  const supabase = await createClient();
   
   const { data, error } = await supabase
     .from("assignments")
@@ -68,7 +68,7 @@ export async function getStudentAssignments(studentId?: string) {
 }
 
 export async function submitAssignment(formData: FormData) {
-  const supabase = createClient();
+  const supabase = await createClient();
   
   const assignmentId = formData.get("assignmentId") as string;
   const content = formData.get("content") as string;

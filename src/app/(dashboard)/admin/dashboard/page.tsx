@@ -181,7 +181,7 @@ export default function AdminDashboard() {
                       </Avatar>
                       <div className="flex-1">
                         <p className="font-medium">
-                          {activity.action.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase())}
+                          {activity.action.replace(/_/g, " ").replace(/\b\w/g, (c: string) => c.toUpperCase())}
                         </p>
                         <p className="text-sm text-muted-foreground">
                           {activity.user?.profiles?.full_name || activity.user?.email || "System"}

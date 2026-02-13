@@ -12,6 +12,7 @@ import { validatePIN, COLLEGE_CODE, getDeptName, getYearDisplay } from "@/lib/pi
 import { Mail, Lock, Eye, EyeOff, User, CheckCircle, AlertCircle } from "lucide-react";
 
 interface PreImportedStudent {
+  id: string;
   pin_number: string;
   first_name: string;
   last_name: string | null;

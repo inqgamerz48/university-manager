@@ -4,7 +4,7 @@ import { hasPermission } from "@/lib/rbac-server";
 import { createAuditLog } from "@/lib/audit";
 
 export async function GET(request: NextRequest) {
-  const supabase = createClient();
+  const supabase = await createClient();
 
   try {
     const { data: { user }, error: authError } = await supabase.auth.getUser();
@@ -35,7 +35,7 @@ export async function GET(request: NextRequest) {
       `)
       .order("created_at", { ascending: false })
       .limit(parseInt(limit))
-      .offset(parseInt(offset));
+      .range(parseInt(offset), parseInt(offset) + parseInt(limit) - 1);
 
     if (role) {
       query = query.eq("role", role);

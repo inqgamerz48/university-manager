@@ -177,11 +177,13 @@ export function useStudentAssignments() {
   useEffect(() => {
     if (!user) return;
 
+    const userId = user.id;
+
     async function fetchAssignments() {
       const { data: studentData } = await supabase
         .from("students")
         .select("id, branch_id, current_semester")
-        .eq("user_id", user.id)
+        .eq("user_id", userId)
         .single();
 
       if (!studentData) {
@@ -212,7 +214,7 @@ export function useStudentAssignments() {
             .from("submissions")
             .select("id, grade, submitted_at")
             .eq("assignment_id", assignment.id)
-            .eq("student_id", user.id)
+            .eq("student_id", userId)
             .single();
 
           return {
@@ -283,11 +285,13 @@ export function useStudentComplaints() {
   useEffect(() => {
     if (!user) return;
 
+    const userId = user.id;
+
     async function fetchComplaints() {
       const { data } = await supabase
         .from("complaints")
         .select("*")
-        .eq("student_id", user.id)
+        .eq("student_id", userId)
         .order("created_at", { ascending: false });
 
       setComplaints(data || []);
@@ -309,11 +313,13 @@ export function useStudentFeeStatus() {
   useEffect(() => {
     if (!user) return;
 
+    const userId = user.id;
+
     async function fetchFees() {
       const { data: studentData } = await supabase
         .from("students")
         .select("id")
-        .eq("user_id", user.id)
+        .eq("user_id", userId)
         .single();
 
       if (!studentData) {
@@ -379,11 +385,13 @@ export function useStudentAttendance() {
   useEffect(() => {
     if (!user) return;
 
+    const userId = user.id;
+
     async function fetchAttendance() {
       const { data: studentData } = await supabase
         .from("students")
         .select("id")
-        .eq("user_id", user.id)
+        .eq("user_id", userId)
         .single();
 
       if (!studentData) {
@@ -446,11 +454,13 @@ export function useFacultyClasses() {
   useEffect(() => {
     if (!user) return;
 
+    const userId = user.id;
+
     async function fetchClasses() {
       const { data: facultyData } = await supabase
         .from("faculty")
         .select("id, branch_id")
-        .eq("user_id", user.id)
+        .eq("user_id", userId)
         .single();
 
       if (!facultyData) {
@@ -552,11 +562,13 @@ export function usePendingGrading() {
   useEffect(() => {
     if (!user) return;
 
+    const userId = user.id;
+
     async function fetchPending() {
       const { data: facultyData } = await supabase
         .from("faculty")
         .select("id")
-        .eq("user_id", user.id)
+        .eq("user_id", userId)
         .single();
 
       if (!facultyData) {
@@ -564,15 +576,17 @@ export function usePendingGrading() {
         return;
       }
 
+      const { data: assignmentIds } = await supabase
+        .from("assignments")
+        .select("id")
+        .eq("faculty_id", facultyData.id);
+
       const { count: submissionCount } = await supabase
         .from("submissions")
         .select("id", { count: "exact" })
         .in(
           "assignment_id",
-          await supabase
-            .from("assignments")
-            .select("id")
-            .eq("faculty_id", facultyData.id)
+          (assignmentIds || []).map(a => a.id)
         )
         .is("grade", null);
 

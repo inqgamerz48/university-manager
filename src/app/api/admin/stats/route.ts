@@ -3,7 +3,7 @@ import { NextResponse } from "next/server";
 import { hasPermission } from "@/lib/rbac-server";
 
 export async function GET() {
-  const supabase = createClient();
+  const supabase = await createClient();
 
   try {
     const { data: { user }, error: authError } = await supabase.auth.getUser();

@@ -4,7 +4,7 @@ import { createClient } from "@/lib/supabase/server";
 import { Role, PERMISSIONS, DEFAULT_ROLE_PERMISSIONS, ROLE_HIERARCHY } from "./rbac";
 
 export async function getUserPermissions(userId: string): Promise<string[]> {
-  const supabase = createClient();
+  const supabase = await createClient();
 
   const { data: user } = await supabase
     .from("users")
@@ -51,7 +51,7 @@ export async function hasAllPermissions(userId: string, permissionList: string[]
 }
 
 export async function hasRole(userId: string, roles: Role | Role[]): Promise<boolean> {
-  const supabase = createClient();
+  const supabase = await createClient();
   const roleArray = Array.isArray(roles) ? roles : [roles];
 
   const { data: user } = await supabase

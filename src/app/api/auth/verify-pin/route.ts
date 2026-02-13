@@ -3,7 +3,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { validatePIN, COLLEGE_CODE } from "@/lib/pin-validator";
 
 export async function POST(request: NextRequest) {
-  const supabase = createClient();
+  const supabase = await createClient();
 
   try {
     const { data: { user }, error: authError } = await supabase.auth.getUser();

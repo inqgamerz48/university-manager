@@ -4,7 +4,6 @@ generator client {
 
 datasource db {
   provider = "postgresql"
-  url      = env("DATABASE_URL")
 }
 
 enum Role {
@@ -133,13 +132,13 @@ model Student {
   created_at      DateTime  @default(now())
   updated_at      DateTime  @updatedAt
 
-  user            User      @relation(fields: [user_id], references: [id], onDelete: Cascade)
+  user            User      @relation("UserStudent", fields: [user_id], references: [id], onDelete: Cascade)
   institution     Institution @relation(fields: [institution_id], references: [id])
   branch          Branch    @relation(fields: [branch_id], references: [id])
   enrollments     Enrollment[]
   fee_payments    FeePayment[]
-  attendances     Attendance[]
-  submissions     Submission[]
+  attendances     Attendance[] @relation("StudentAttendances")
+  submissions     Submission[] @relation("StudentSubmissions")
 
   @@index([institution_id])
   @@index([branch_id])
@@ -159,7 +158,7 @@ model Faculty {
   created_at      DateTime  @default(now())
   updated_at      DateTime  @updatedAt
 
-  user            User      @relation(fields: [user_id], references: [id], onDelete: Cascade)
+  user            User      @relation("UserFaculty", fields: [user_id], references: [id], onDelete: Cascade)
   institution     Institution @relation(fields: [institution_id], references: [id])
   branch          Branch?   @relation(fields: [branch_id], references: [id])
   subjects        Subject[]
@@ -227,12 +226,14 @@ model User {
   updated_at      DateTime  @updatedAt
 
   institution     Institution? @relation(fields: [institution_id], references: [id])
-  profile         Profile?
-  submissions     Submission[]
-  attendances     Attendance[]
-  complaints      Complaint[]
-  notices         Notice[]
-  notifications   Notification[]
+  profile         Profile?      @relation("UserProfile")
+  student         Student?      @relation("UserStudent")
+  faculty         Faculty?      @relation("UserFaculty")
+  complaints      Complaint[]   @relation("UserComplaints")
+  notices         Notice[]      @relation("UserNotices")
+  notifications   Notification[] @relation("UserNotifications")
+  audit_logs      AuditLog[]    @relation("UserAuditLogs")
+  sessions        Session[]     @relation("UserSessions")
 
   @@index([email])
   @@index([role])
@@ -252,7 +253,7 @@ model Profile {
   created_at    DateTime @default(now())
   updated_at    DateTime @updatedAt
 
-  user          User    @relation(fields: [user_id], references: [id], onDelete: Cascade)
+  user          User    @relation("UserProfile", fields: [user_id], references: [id], onDelete: Cascade)
 
   @@index([user_id])
   @@index([pin_number])
@@ -293,7 +294,7 @@ model Submission {
   updated_at    DateTime  @updatedAt
 
   assignment    Assignment @relation(fields: [assignment_id], references: [id], onDelete: Cascade)
-  student       User      @relation(fields: [student_id], references: [id])
+  student       Student   @relation("StudentSubmissions", fields: [student_id], references: [id])
 
   @@unique([assignment_id, student_id])
   @@index([assignment_id])
@@ -310,7 +311,7 @@ model Attendance {
   created_at    DateTime         @default(now())
   updated_at    DateTime         @updatedAt
 
-  student       User             @relation(fields: [student_id], references: [id])
+  student       Student          @relation("StudentAttendances", fields: [student_id], references: [id])
   subject       Subject          @relation(fields: [subject_id], references: [id])
 
   @@unique([student_id, date, subject_id])
@@ -332,7 +333,7 @@ model Notice {
   created_at    DateTime  @default(now())
   updated_at    DateTime  @updatedAt
 
-  publisher     User      @relation(fields: [published_by], references: [id])
+  publisher     User      @relation("UserNotices", fields: [published_by], references: [id])
 
   @@index([published_at])
   @@index([category])
@@ -353,7 +354,7 @@ model Complaint {
   updated_at    DateTime        @updatedAt
   resolved_at   DateTime?
 
-  student       User            @relation(fields: [student_id], references: [id])
+  student       User            @relation("UserComplaints", fields: [student_id], references: [id])
 
   @@index([student_id])
   @@index([status])
@@ -414,7 +415,7 @@ model Notification {
   created_at      DateTime          @default(now())
 
   institution     Institution?       @relation(fields: [institution_id], references: [id])
-  user            User?             @relation(fields: [user_id], references: [id])
+  user            User?             @relation("UserNotifications", fields: [user_id], references: [id])
   user_id         String?
 
   @@index([institution_id])
@@ -463,7 +464,7 @@ model AuditLog {
   user_agent  String?
   created_at  DateTime  @default(now())
 
-  user        User?      @relation(fields: [user_id], references: [id], onDelete: SetNull)
+  user        User?      @relation("UserAuditLogs", fields: [user_id], references: [id], onDelete: SetNull)
 
   @@index([user_id])
   @@index([entity_type])
@@ -481,7 +482,7 @@ model Session {
   expires_at  DateTime
   created_at  DateTime  @default(now())
 
-  user        User      @relation(fields: [user_id], references: [id], onDelete: Cascade)
+  user        User      @relation("UserSessions", fields: [user_id], references: [id], onDelete: Cascade)
 
   @@index([user_id])
   @@index([token])

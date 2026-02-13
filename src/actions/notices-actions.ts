@@ -4,7 +4,7 @@ import { createClient } from "@/lib/supabase/server";
 import { revalidatePath } from "next/cache";
 
 export async function createNotice(formData: FormData) {
-  const supabase = createClient();
+  const supabase = await createClient();
   
   const title = formData.get("title") as string;
   const content = formData.get("content") as string;
@@ -30,7 +30,7 @@ export async function createNotice(formData: FormData) {
 }
 
 export async function getNotices(filters?: { category?: string; priority?: string }) {
-  const supabase = createClient();
+  const supabase = await createClient();
   
   let query = supabase
     .from("notices")
@@ -58,7 +58,7 @@ export async function getNotices(filters?: { category?: string; priority?: strin
 }
 
 export async function getAllNotices() {
-  const supabase = createClient();
+  const supabase = await createClient();
   
   const { data, error } = await supabase
     .from("notices")
@@ -77,7 +77,7 @@ export async function getAllNotices() {
 }
 
 export async function updateNoticeStatus(noticeId: string, isActive: boolean) {
-  const supabase = createClient();
+  const supabase = await createClient();
   
   const { error } = await supabase
     .from("notices")

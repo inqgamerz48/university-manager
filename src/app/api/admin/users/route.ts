@@ -20,7 +20,20 @@ export async function POST(request: NextRequest) {
 
   try {
     const body = await request.json();
-    const { email, password, full_name, role, pin_number } = body;
+    const { email, password, full_name, role, pin_number, branch_id, admission_year } = body;
+
+    // Get Admin's institution_id
+    const { data: adminUser } = await supabaseAdmin
+      .from("users")
+      .select("institution_id")
+      .eq("id", user.id)
+      .single();
+
+    const institution_id = adminUser?.institution_id;
+
+    if (!institution_id) {
+      return NextResponse.json({ error: "Admin has no institution assigned" }, { status: 400 });
+    }
 
     // 1. Create user in Auth (using Service Role)
     const { data: newUser, error: createError } = await supabaseAdmin.auth.admin.createUser({
@@ -58,14 +71,26 @@ export async function POST(request: NextRequest) {
 
     if (profileError) throw profileError;
 
-    // 4. If Faculty or Student, create specific record?
+    // 4. If Faculty or Student, create specific record
     if (role === 'FACULTY') {
-      await supabaseAdmin.from('faculty').upsert({ user_id: newUser.user.id });
+      await supabaseAdmin.from('faculty').upsert({
+        user_id: newUser.user.id,
+        institution_id,
+        employee_id: pin_number || `EMP-${Date.now()}`,
+        branch_id: branch_id || null
+      });
     } else if (role === 'STUDENT') {
-      // Need branch_id, etc. If not provided, just create empty record
+      if (!branch_id || !admission_year) {
+        throw new Error("Branch and Admission Year are required for Students");
+      }
       await supabaseAdmin.from('students').upsert({
         user_id: newUser.user.id,
-        pin_number
+        institution_id,
+        branch_id,
+        pin_number,
+        admission_year: parseInt(admission_year),
+        academic_year: "YEAR_1",
+        current_semester: "SEM_1"
       });
     }
 

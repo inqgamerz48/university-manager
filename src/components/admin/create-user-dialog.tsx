@@ -7,6 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
+import { useBranches } from "@/hooks/use-dashboard";
 
 interface CreateUserDialogProps {
     open: boolean;
@@ -17,12 +18,16 @@ interface CreateUserDialogProps {
 export function CreateUserDialog({ open, onOpenChange, onSuccess }: CreateUserDialogProps) {
     const [loading, setLoading] = useState(false);
     const { toast } = useToast();
+    const { branches } = useBranches();
+
     const [formData, setFormData] = useState({
         email: "",
         password: "",
         full_name: "",
         role: "STUDENT" as "STUDENT" | "FACULTY" | "ADMIN",
-        pin_number: ""
+        pin_number: "",
+        branch_id: "",
+        admission_year: new Date().getFullYear().toString()
     });
 
     const handleSubmit = async (e: React.FormEvent) => {
@@ -42,7 +47,15 @@ export function CreateUserDialog({ open, onOpenChange, onSuccess }: CreateUserDi
                 toast({ title: "Success", description: "User created successfully" });
                 onSuccess();
                 onOpenChange(false);
-                setFormData({ email: "", password: "", full_name: "", role: "STUDENT", pin_number: "" });
+                setFormData({
+                    email: "",
+                    password: "",
+                    full_name: "",
+                    role: "STUDENT",
+                    pin_number: "",
+                    branch_id: "",
+                    admission_year: new Date().getFullYear().toString()
+                });
             } else {
                 toast({ title: "Error", description: data.error || "Failed to create user", variant: "destructive" });
             }
@@ -95,18 +108,58 @@ export function CreateUserDialog({ open, onOpenChange, onSuccess }: CreateUserDi
                                 </SelectContent>
                             </Select>
                         </div>
+
                         {formData.role === "STUDENT" && (
+                            <>
+                                <div className="space-y-2">
+                                    <Label>PIN / Roll No</Label>
+                                    <Input
+                                        required
+                                        placeholder="e.g. 23622-CS-001"
+                                        value={formData.pin_number}
+                                        onChange={(e) => setFormData({ ...formData, pin_number: e.target.value })}
+                                    />
+                                </div>
+                                <div className="space-y-2 col-span-2">
+                                    <Label>Branch / Department</Label>
+                                    <Select
+                                        value={formData.branch_id}
+                                        onValueChange={(v) => setFormData({ ...formData, branch_id: v })}
+                                        required
+                                    >
+                                        <SelectTrigger><SelectValue placeholder="Select Branch" /></SelectTrigger>
+                                        <SelectContent>
+                                            {branches.map((b: any) => (
+                                                <SelectItem key={b.id} value={b.id}>{b.name} ({b.code})</SelectItem>
+                                            ))}
+                                        </SelectContent>
+                                    </Select>
+                                </div>
+                                <div className="space-y-2">
+                                    <Label>Admission Year</Label>
+                                    <Input
+                                        type="number"
+                                        required
+                                        value={formData.admission_year}
+                                        onChange={(e) => setFormData({ ...formData, admission_year: e.target.value })}
+                                    />
+                                </div>
+                            </>
+                        )}
+
+                        {formData.role === "FACULTY" && (
                             <div className="space-y-2">
-                                <Label>PIN Number</Label>
+                                <Label>Employee ID</Label>
                                 <Input
                                     required
-                                    placeholder="e.g. 23622-CS-001"
+                                    placeholder="e.g. EMP-001"
                                     value={formData.pin_number}
                                     onChange={(e) => setFormData({ ...formData, pin_number: e.target.value })}
                                 />
                             </div>
                         )}
                     </div>
+
                     <div className="space-y-2">
                         <Label>Password</Label>
                         <Input

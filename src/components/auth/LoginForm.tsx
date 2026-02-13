@@ -145,10 +145,16 @@ export function LoginForm() {
             </a>
           </div>
         </CardContent>
-        <CardFooter>
+        <CardFooter className="flex flex-col space-y-4">
           <Button type="submit" className="w-full gold" loading={isLoading}>
             Sign In
           </Button>
+          <p className="text-sm text-muted-foreground text-center">
+            Don't have an account?{" "}
+            <a href="/register" className="text-gold-500 hover:text-gold-400 font-semibold">
+              Register here
+            </a>
+          </p>
         </CardFooter>
       </form>
     </Card>

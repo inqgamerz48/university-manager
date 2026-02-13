@@ -1,82 +1,197 @@
+-- ========================================
+-- UNI Manager - Row Level Security (RLS)
+-- ========================================
+-- IMPORTANT: Run this line by line in Supabase SQL Editor if you get errors
+
 -- Enable RLS on all tables
+ALTER TABLE "Institution" ENABLE ROW LEVEL SECURITY;
+ALTER TABLE "Branch" ENABLE ROW LEVEL SECURITY;
 ALTER TABLE "User" ENABLE ROW LEVEL SECURITY;
 ALTER TABLE "Profile" ENABLE ROW LEVEL SECURITY;
+ALTER TABLE "Student" ENABLE ROW LEVEL SECURITY;
+ALTER TABLE "Faculty" ENABLE ROW LEVEL SECURITY;
+ALTER TABLE "Subject" ENABLE ROW LEVEL SECURITY;
+ALTER TABLE "Enrollment" ENABLE ROW LEVEL SECURITY;
 ALTER TABLE "Assignment" ENABLE ROW LEVEL SECURITY;
 ALTER TABLE "Submission" ENABLE ROW LEVEL SECURITY;
 ALTER TABLE "Attendance" ENABLE ROW LEVEL SECURITY;
 ALTER TABLE "Notice" ENABLE ROW LEVEL SECURITY;
 ALTER TABLE "Complaint" ENABLE ROW LEVEL SECURITY;
-ALTER TABLE "Subject" ENABLE ROW LEVEL SECURITY;
 ALTER TABLE "FeeStructure" ENABLE ROW LEVEL SECURITY;
 ALTER TABLE "FeePayment" ENABLE ROW LEVEL SECURITY;
-ALTER TABLE "Institution" ENABLE ROW LEVEL SECURITY;
-ALTER TABLE "Branch" ENABLE ROW LEVEL SECURITY;
-ALTER TABLE "Enrollment" ENABLE ROW LEVEL SECURITY;
 ALTER TABLE "Notification" ENABLE ROW LEVEL SECURITY;
+ALTER TABLE "Permission" ENABLE ROW LEVEL SECURITY;
+ALTER TABLE "RolePermission" ENABLE ROW LEVEL SECURITY;
+ALTER TABLE "AuditLog" ENABLE ROW LEVEL SECURITY;
+ALTER TABLE "Session" ENABLE ROW LEVEL SECURITY;
 
--- 1. Users policies
+-- ========================================
+-- USER (references auth.uid() with 'id' column)
+-- ========================================
 CREATE POLICY "Users can view own data" ON "User"
-  FOR SELECT USING (auth.uid() = id::text);
+  FOR SELECT USING (auth.uid()::text = id);
 
 CREATE POLICY "Users can update own data" ON "User"
-  FOR UPDATE USING (auth.uid() = id::text);
+  FOR UPDATE USING (auth.uid()::text = id);
 
--- 2. Profiles policies
-CREATE POLICY "Users can view profiles" ON "Profile"
-  FOR SELECT USING (true); -- Public profiles? Or restricted? Adjust if needed.
+-- ========================================
+-- PROFILE (references User.id with 'user_id' column)
+-- ========================================
+CREATE POLICY "Profiles are viewable by all" ON "Profile"
+  FOR SELECT USING (true);
 
 CREATE POLICY "Users can update own profile" ON "Profile"
-  FOR UPDATE USING (auth.uid() = user_id::text);
+  FOR UPDATE USING (auth.uid()::text = user_id);
 
-CREATE POLICY "Users can insert own profile" ON "Profile"
-  FOR INSERT WITH CHECK (auth.uid() = user_id::text);
+-- ========================================
+-- STUDENT (references User.id with 'user_id' column)
+-- ========================================
+CREATE POLICY "Students can view own record" ON "Student"
+  FOR SELECT USING (auth.uid()::text = user_id);
 
+CREATE POLICY "Admins can manage students" ON "Student"
+  FOR ALL USING (
+    EXISTS (
+      SELECT 1 FROM "User" WHERE id = auth.uid()::text 
+      AND role IN ('ADMIN', 'SUPER_ADMIN')
+    )
+  );
 
--- 3. Assignments policies
--- Students can view assignments for their subjects (simplified to public for now or authenticated)
-CREATE POLICY "Authenticated users can view assignments" ON "Assignment"
-  FOR SELECT USING (auth.role() = 'authenticated');
+-- ========================================
+-- FACULTY (references User.id with 'user_id' column)
+-- ========================================
+CREATE POLICY "Faculty can view own record" ON "Faculty"
+  FOR SELECT USING (auth.uid()::text = user_id);
 
--- Faculty can manage assignments (This requires checking the user role which might be complex in RLS without custom claims or lookups)
--- For now, allow authenticated users to view. Management usually restricted by application logic or admin roles.
--- A stricter policy would be:
--- FOR ALL USING (EXISTS (SELECT 1 FROM "User" WHERE id = auth.uid()::text AND role IN ('FACULTY', 'ADMIN', 'SUPER_ADMIN')))
+CREATE POLICY "Admins can manage faculty" ON "Faculty"
+  FOR ALL USING (
+    EXISTS (
+      SELECT 1 FROM "User" WHERE id = auth.uid()::text 
+      AND role IN ('ADMIN', 'SUPER_ADMIN')
+    )
+  );
 
-
--- 4. Submissions policies
-CREATE POLICY "Students can view own submissions" ON "Submission"
-  FOR SELECT USING (auth.uid() = student_id::text);
-
-CREATE POLICY "Students can create own submissions" ON "Submission"
-  FOR INSERT WITH CHECK (auth.uid() = student_id::text);
-
-CREATE POLICY "Students can update own submissions" ON "Submission"
-  FOR UPDATE USING (auth.uid() = student_id::text);
-
--- Faculty can view all submissions for assignments they own? 
--- This gets complex with relations. For start, let's keep it simple.
-
-
--- 5. Attendance policies
-CREATE POLICY "Students can view own attendance" ON "Attendance"
-  FOR SELECT USING (auth.uid() = student_id::text);
-
--- Faculty/Admins execute attendance taking.
-
-
--- 6. Notices policies
-CREATE POLICY "Anyone can view active notices" ON "Notice"
+-- ========================================
+-- ASSIGNMENT
+-- ========================================
+CREATE POLICY "Students can view assignments" ON "Assignment"
   FOR SELECT USING (is_active = true);
 
+-- ========================================
+-- SUBMISSION
+-- ========================================
+CREATE POLICY "Students can view own submissions" ON "Submission"
+  FOR SELECT USING (
+    auth.uid()::text IN (
+      SELECT user_id FROM "Student" WHERE id = "Submission".student_id
+    )
+  );
 
--- 7. Complaints policies
-CREATE POLICY "Students can view own complaints" ON "Complaint"
-  FOR SELECT USING (auth.uid() = student_id::text);
+-- ========================================
+-- ATTENDANCE
+-- ========================================
+CREATE POLICY "Students can view attendance" ON "Attendance"
+  FOR SELECT USING (
+    auth.uid()::text IN (
+      SELECT user_id FROM "Student" WHERE id = "Attendance".student_id
+    )
+  );
 
-CREATE POLICY "Students can create complaints" ON "Complaint"
-  FOR INSERT WITH CHECK (auth.uid() = student_id::text);
+-- ========================================
+-- NOTICE
+-- ========================================
+CREATE POLICY "All users can view notices" ON "Notice"
+  FOR SELECT USING (is_active = true);
 
+-- ========================================
+-- COMPLAINT (references User.id with 'student_id' column)
+-- ========================================
+CREATE POLICY "Students can manage complaints" ON "Complaint"
+  FOR ALL USING (auth.uid()::text = student_id);
 
--- 8. Subjects policies
-CREATE POLICY "Authenticated users can view subjects" ON "Subject"
-  FOR SELECT USING (auth.role() = 'authenticated');
+CREATE POLICY "Admins can view complaints" ON "Complaint"
+  FOR SELECT USING (
+    EXISTS (
+      SELECT 1 FROM "User" 
+      WHERE id = auth.uid()::text AND role IN ('ADMIN', 'SUPER_ADMIN')
+    )
+  );
+
+-- ========================================
+-- INSTITUTION
+-- ========================================
+CREATE POLICY "All can view institutions" ON "Institution"
+  FOR SELECT USING (true);
+
+-- ========================================
+-- BRANCH
+-- ========================================
+CREATE POLICY "All can view branches" ON "Branch"
+  FOR SELECT USING (true);
+
+-- ========================================
+-- SUBJECT
+-- ========================================
+CREATE POLICY "All can view subjects" ON "Subject"
+  FOR SELECT USING (is_active = true);
+
+-- ========================================
+-- ENROLLMENT
+-- ========================================
+CREATE POLICY "Students can view enrollments" ON "Enrollment"
+  FOR SELECT USING (
+    auth.uid()::text IN (
+      SELECT user_id FROM "Student" WHERE id = "Enrollment".student_id
+    )
+  );
+
+-- ========================================
+-- FEE STRUCTURE
+-- ========================================
+CREATE POLICY "All can view fee structures" ON "FeeStructure"
+  FOR SELECT USING (true);
+
+-- ========================================
+-- FEE PAYMENT
+-- ========================================
+CREATE POLICY "Students can view own fee payments" ON "FeePayment"
+  FOR SELECT USING (
+    auth.uid()::text IN (
+      SELECT user_id FROM "Student" WHERE id = "FeePayment".student_id
+    )
+  );
+
+-- ========================================
+-- NOTIFICATION (references User.id with 'user_id' column)
+-- ========================================
+CREATE POLICY "Users can view own notifications" ON "Notification"
+  FOR SELECT USING (auth.uid()::text = user_id);
+
+-- ========================================
+-- PERMISSION
+-- ========================================
+CREATE POLICY "All can view permissions" ON "Permission"
+  FOR SELECT USING (true);
+
+-- ========================================
+-- ROLE PERMISSION
+-- ========================================
+CREATE POLICY "All can view role permissions" ON "RolePermission"
+  FOR SELECT USING (true);
+
+-- ========================================
+-- AUDIT LOG (references User.id with 'user_id' column)
+-- ========================================
+CREATE POLICY "Admins can view audit logs" ON "AuditLog"
+  FOR SELECT USING (
+    EXISTS (
+      SELECT 1 FROM "User" 
+      WHERE id = auth.uid()::text AND role IN ('ADMIN', 'SUPER_ADMIN')
+    )
+  );
+
+-- ========================================
+-- SESSION (references User.id with 'user_id' column)
+-- ========================================
+CREATE POLICY "Users can view own sessions" ON "Session"
+  FOR SELECT USING (auth.uid()::text = user_id);

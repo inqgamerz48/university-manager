@@ -1,7 +1,6 @@
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
-// Note: getUserPermissions should be imported from @/lib/rbac-server for server components
-// import { getUserPermissions } from "@/lib/rbac-server";
+import { DashboardShell } from "@/components/dashboard/DashboardShell";
 
 export default async function DashboardLayout({
   children,
@@ -20,18 +19,6 @@ export default async function DashboardLayout({
     redirect("/login");
   }
 
-  const { data: profile } = await supabase
-    .from("users")
-    .select("role, institution_id")
-    .eq("id", user.id)
-    .single();
-
-  const role = profile?.role || "STUDENT";
-
-  return (
-    <div className="min-h-screen bg-background">
-      {/* Role is available for client components via headers */}
-      {children}
-    </div>
-  );
+  return <DashboardShell>{children}</DashboardShell>;
 }
+

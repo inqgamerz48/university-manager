@@ -18,6 +18,7 @@ export default function ImportPage() {
   const [isLoading, setIsLoading] = React.useState(false);
   const [stats, setStats] = React.useState<ImportStats | null>(null);
   const [dragActive, setDragActive] = React.useState(false);
+  const [importType, setImportType] = React.useState<"students" | "grades">("students");
 
   React.useEffect(() => { fetchStats(); }, []);
 
@@ -65,6 +66,7 @@ export default function ImportPage() {
     setIsLoading(true);
     const formData = new FormData();
     formData.append("file", file);
+    formData.append("type", importType);
     try {
       const response = await fetch("/api/imports", { method: "POST", body: formData });
       const data = await response.json();
@@ -77,17 +79,27 @@ export default function ImportPage() {
   };
 
   const downloadTemplate = () => {
-    const template = `PIN,First Name,Last Name,Email,Year,Semester,Course Code,Course Name\n23622-CM-001,John,Doe,john@gmail.com,2026-27,1,CS101,Computer Science`;
+    let template = "";
+    let filename = "";
+
+    if (importType === "students") {
+      template = `PIN,First Name,Last Name,Email,Year,Semester,Course Code,Course Name\n23622-CM-001,John,Doe,john@gmail.com,2026-27,1,CS101,Computer Science`;
+      filename = "student_template.csv";
+    } else {
+      template = `PIN,Assignment ID,Grade,Feedback\n23622-CM-001,ASSIGN-123,85.5,Good work`;
+      filename = "grades_template.csv";
+    }
+
     const blob = new Blob([template], { type: "text/csv" });
     const url = window.URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
-    a.download = "student_template.csv";
+    a.download = filename;
     document.body.appendChild(a);
     a.click();
     document.body.removeChild(a);
     window.URL.revokeObjectURL(url);
-    toast({ title: "Template Downloaded", description: "Fill in the student data" });
+    toast({ title: "Template Downloaded", description: `Downloaded template for ${importType}` });
   };
 
   return (
@@ -126,6 +138,28 @@ export default function ImportPage() {
                   <CardDescription>Upload an Excel or CSV file with student data</CardDescription>
                 </CardHeader>
                 <CardContent>
+                  <div className="mb-6">
+                    <label className="text-sm font-medium mb-2 block">Import Type</label>
+                    <div className="flex gap-4">
+                      <Button
+                        variant={importType === "students" ? "default" : "outline"}
+                        className={importType === "students" ? "gold" : ""}
+                        onClick={() => setImportType("students")}
+                      >
+                        <Users className="h-4 w-4 mr-2" />
+                        Students
+                      </Button>
+                      <Button
+                        variant={importType === "grades" ? "default" : "outline"}
+                        className={importType === "grades" ? "gold" : ""}
+                        onClick={() => setImportType("grades")}
+                      >
+                        <FileSpreadsheet className="h-4 w-4 mr-2" />
+                        Grades
+                      </Button>
+                    </div>
+                  </div>
+
                   <div
                     className={`border-2 border-dashed rounded-lg p-8 text-center transition-colors ${dragActive ? "border-gold-500 bg-gold-500/5" : "border-border hover:border-gold-500/50"}`}
                     onDragEnter={handleDrag}
@@ -175,11 +209,21 @@ export default function ImportPage() {
                     Download CSV Template
                   </Button>
                   <div className="p-4 rounded-lg bg-muted/50">
-                    <h4 className="font-medium mb-2">Required Columns:</h4>
+                    <h4 className="font-medium mb-2">Required Columns ({importType === "students" ? "Students" : "Grades"}):</h4>
                     <ul className="text-sm space-y-1 text-muted-foreground">
-                      <li>PIN (e.g., 23622-CM-001)</li>
-                      <li>First Name, Last Name, Email</li>
-                      <li>Year, Semester, Course Code, Course Name</li>
+                      {importType === "students" ? (
+                        <>
+                          <li>PIN (e.g., 23622-CM-001)</li>
+                          <li>First Name, Last Name, Email</li>
+                          <li>Year, Semester, Course Code, Course Name</li>
+                        </>
+                      ) : (
+                        <>
+                          <li>PIN (e.g., 23622-CM-001)</li>
+                          <li>Assignment ID (e.g., ASSIGN-123)</li>
+                          <li>Grade (Numeric), Feedback (Text)</li>
+                        </>
+                      )}
                     </ul>
                   </div>
                   {stats && (

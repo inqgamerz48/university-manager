@@ -37,10 +37,29 @@ export function RegisterForm() {
   });
   const [errors, setErrors] = React.useState<Record<string, string>>({});
   const [preImportedData, setPreImportedData] = React.useState<PreImportedStudent | null>(null);
+  const [institutionCollegeCode, setInstitutionCollegeCode] = React.useState<string>(COLLEGE_CODE);
+  const [institutionId, setInstitutionId] = React.useState<string>("");
+
+  // Fetch institution college code on mount
+  React.useEffect(() => {
+    async function fetchInstitution() {
+      const { data: institution } = await supabase
+        .from("institutions")
+        .select("id, college_code")
+        .eq("is_active", true)
+        .single();
+
+      if (institution) {
+        setInstitutionCollegeCode(institution.college_code);
+        setInstitutionId(institution.id);
+      }
+    }
+    fetchInstitution();
+  }, [supabase]);
 
   const validateStep1 = (): boolean => {
     const newErrors: Record<string, string> = {};
-    const pinValidation = validatePIN(formData.pinNumber);
+    const pinValidation = validatePIN(formData.pinNumber, institutionCollegeCode);
 
     if (!formData.pinNumber.trim()) {
       newErrors.pinNumber = "PIN number is required";
@@ -89,20 +108,13 @@ export function RegisterForm() {
     setIsLoading(true);
 
     try {
-      const pinValidation = validatePIN(formData.pinNumber);
-
-      const { data: institution } = await supabase
-        .from("institutions")
-        .select("id")
-        .eq("is_active", true)
-        .single();
-
-      const institutionId = institution?.id || "default";
+      const pinValidation = validatePIN(formData.pinNumber, institutionCollegeCode);
+      const currentInstitutionId = institutionId || "default";
 
       const { data: preImport, error } = await supabase
         .from("student_pre_imports")
         .select("*")
-        .eq("institution_id", institutionId)
+        .eq("institution_id", currentInstitutionId)
         .eq("pin_number", pinValidation.valid ? formData.pinNumber.toUpperCase() : "")
         .is("is_registered", false)
         .single();
@@ -140,15 +152,8 @@ export function RegisterForm() {
     setIsLoading(true);
 
     try {
-      const pinValidation = validatePIN(formData.pinNumber);
-
-      const { data: institution } = await supabase
-        .from("institutions")
-        .select("id")
-        .eq("is_active", true)
-        .single();
-
-      const institutionId = institution?.id || "default";
+      const pinValidation = validatePIN(formData.pinNumber, institutionCollegeCode);
+      const currentInstitutionId = institutionId || "default";
 
       const { data: authData, error: authError } = await supabase.auth.signUp({
         email: formData.email,
@@ -164,6 +169,7 @@ export function RegisterForm() {
       if (authError) throw authError;
 
       if (authData.user) {
+        // 1. Create profile
         const { error: profileError } = await supabase.from("profiles").insert({
           user_id: authData.user.id,
           full_name: preImportedData
@@ -179,6 +185,42 @@ export function RegisterForm() {
 
         if (profileError) throw profileError;
 
+        // 2. Find branch by course_code from pre-import data
+        let branchId = "";
+        if (preImportedData?.course_code) {
+          const { data: branch } = await supabase
+            .from("branches")
+            .select("id")
+            .eq("institution_id", currentInstitutionId)
+            .eq("code", preImportedData.course_code)
+            .single();
+
+          branchId = branch?.id || "";
+        }
+
+        // 3. Create student record — THIS WAS MISSING BEFORE
+        if (branchId) {
+          const admissionYear = pinValidation.valid
+            ? parseInt(`20${pinValidation.year}`, 10)
+            : new Date().getFullYear();
+
+          const { error: studentError } = await supabase.from("students").insert({
+            user_id: authData.user.id,
+            institution_id: currentInstitutionId,
+            branch_id: branchId,
+            pin_number: formData.pinNumber.toUpperCase(),
+            admission_year: admissionYear,
+            academic_year: preImportedData?.year || "YEAR_1",
+            current_semester: preImportedData?.semester || "SEM_1",
+          });
+
+          if (studentError) {
+            console.error("Student record creation failed:", studentError);
+            // Non-blocking: profile already created, student record is supplementary
+          }
+        }
+
+        // 4. Mark pre-import as registered
         if (preImportedData) {
           await supabase
             .from("student_pre_imports")
@@ -190,10 +232,11 @@ export function RegisterForm() {
             .eq("id", preImportedData.id);
         }
 
+        // 5. Update user record with institution + pin
         await supabase
           .from("users")
           .update({
-            institution_id: institutionId,
+            institution_id: currentInstitutionId,
             pin_number: formData.pinNumber.toUpperCase(),
           })
           .eq("id", authData.user.id);
@@ -216,7 +259,7 @@ export function RegisterForm() {
     }
   };
 
-  const pinValidation = validatePIN(formData.pinNumber);
+  const pinValidation = validatePIN(formData.pinNumber, institutionCollegeCode);
 
   if (step === "success") {
     return (
@@ -275,7 +318,7 @@ export function RegisterForm() {
                 <User className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
                 <Input
                   id="pinNumber"
-                  placeholder="23622-CM-001"
+                  placeholder={`24${institutionCollegeCode}-CS-001`}
                   className="pl-10 uppercase"
                   value={formData.pinNumber}
                   onChange={(e) =>
@@ -289,9 +332,9 @@ export function RegisterForm() {
                 <p className="text-sm text-red-500">{errors.pinNumber}</p>
               ) : formData.pinNumber.length > 0 && !pinValidation.valid ? (
                 <p className="text-sm text-yellow-500">
-                  Format: YY622-DEPT-PIN (e.g., 23622-CM-001)
+                  Format: YY{institutionCollegeCode}-DEPT-PIN (e.g., 24{institutionCollegeCode}-CS-001)
                 </p>
-              ) : formData.pinNumber.length >= 12 && pinValidation.valid && (
+              ) : formData.pinNumber.length >= 10 && pinValidation.valid && (
                 <div className="p-3 rounded-lg bg-green-500/10 border border-green-500/20">
                   <div className="flex items-center gap-2 text-green-400 text-sm">
                     <CheckCircle className="h-4 w-4" />
@@ -313,7 +356,7 @@ export function RegisterForm() {
               className="w-full gold"
               onClick={handleVerifyPIN}
               loading={isLoading}
-              disabled={formData.pinNumber.length < 12}
+              disabled={formData.pinNumber.length < 10}
             >
               Verify PIN
             </Button>

@@ -60,9 +60,9 @@ export function LoginForm() {
 
       if (data.user) {
         const { data: profile } = await supabase
-          .from("profiles")
+          .from("users")
           .select("role")
-          .eq("user_id", data.user.id)
+          .eq("id", data.user.id)
           .single();
 
         const role = profile?.role || "STUDENT";
@@ -135,14 +135,8 @@ export function LoginForm() {
             </div>
             {errors.password && <p className="text-sm text-red-500">{errors.password}</p>}
           </div>
-          <div className="flex items-center justify-between">
-            <label className="flex items-center space-x-2 text-sm">
-              <input type="checkbox" className="rounded border-gray-600 bg-muted" />
-              <span>Remember me</span>
-            </label>
-            <a href="/forgot-password" className="text-sm text-gold-500 hover:text-gold-400">
-              Forgot password?
-            </a>
+          <div className="text-right">
+            <p className="text-xs text-muted-foreground">Contact admin if you forgot your password</p>
           </div>
         </CardContent>
         <CardFooter className="flex flex-col space-y-4">

@@ -53,12 +53,73 @@ export async function POST(request: NextRequest) {
     const arrayBuffer = await file.arrayBuffer();
     const buffer = Buffer.from(arrayBuffer);
 
-    const { parse } = await import("csv-parse/sync");
-    const records = parse(buffer, {
-      columns: true,
-      skip_empty_lines: true,
-      trim: true,
-    });
+    // Dynamic import to avoid build issues if not used elsewhere
+    const XLSX = await import("xlsx");
+    const workbook = XLSX.read(buffer, { type: "buffer" });
+    const sheetName = workbook.SheetNames[0];
+    const sheet = workbook.Sheets[sheetName];
+    // Cast to unknown first to avoid type errors with generic array
+    const records = XLSX.utils.sheet_to_json(sheet) as Record<string, unknown>[];
+
+    const type = formData.get("type") as string || "students";
+
+    // --- GRADES IMPORT LOGIC ---
+    if (type === "grades") {
+      const requiredColumns = ["PIN", "Assignment ID", "Grade"];
+      const headers = Object.keys(records[0] || {});
+      // Case-insensitive check for headers is better, but keeping simple for now
+      // Or mapping headers to standard keys
+
+      // Simple validation
+      const missing = requiredColumns.filter(col => !headers.includes(col));
+      if (missing.length > 0) {
+        return NextResponse.json({ error: `Missing columns: ${missing.join(", ")}` }, { status: 400 });
+      }
+
+      const results = { imported: 0, skipped: 0, errors: [] as any[] };
+
+      for (let i = 0; i < records.length; i++) {
+        const row = records[i] as any;
+        const pin = row["PIN"]?.toString().trim();
+        const assignmentId = row["Assignment ID"]?.toString().trim();
+        const grade = parseFloat(row["Grade"]?.toString().trim());
+        const feedback = row["Feedback"]?.toString().trim();
+
+        if (!pin || !assignmentId || isNaN(grade)) {
+          results.errors.push({ row: i + 2, error: "Missing PIN, Assignment ID or valid Grade" });
+          results.skipped++;
+          continue;
+        }
+
+        // Find student
+        const { data: student } = await supabase.from("students").select("id").eq("pin_number", pin).single();
+        if (!student) {
+          results.errors.push({ row: i + 2, pin, error: "Student not found" });
+          results.skipped++;
+          continue;
+        }
+
+        // Update/Create Submission
+        const { error } = await supabase.from("submissions").upsert({
+          assignment_id: assignmentId,
+          student_id: student.id,
+          grade: grade,
+          feedback: feedback,
+          graded_at: new Date().toISOString()
+        }, { onConflict: "assignment_id,student_id" });
+
+        if (error) {
+          results.errors.push({ row: i + 2, pin, error: error.message });
+          results.skipped++;
+        } else {
+          results.imported++;
+        }
+      }
+
+      return NextResponse.json({ success: true, ...results });
+    }
+
+    // --- STUDENTS IMPORT LOGIC (Is now default) ---
 
     const requiredColumns = ["PIN", "First Name", "Year", "Semester", "Course Code", "Course Name"];
     const headers = Object.keys(records[0] || {});

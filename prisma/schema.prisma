@@ -139,6 +139,7 @@ model Branch {
   @@unique([institution_id, code])
   @@index([institution_id])
   @@index([course_type])
+  @@map("branches")
 }
 
 model Student {
@@ -167,6 +168,7 @@ model Student {
   @@index([branch_id])
   @@index([pin_number])
   @@index([admission_year])
+  @@map("students")
 }
 
 model Faculty {
@@ -189,6 +191,7 @@ model Faculty {
 
   @@index([institution_id])
   @@index([branch_id])
+  @@map("faculty")
 }
 
 model Subject {
@@ -217,6 +220,7 @@ model Subject {
   @@index([branch_id])
   @@index([faculty_id])
   @@index([semester])
+  @@map("subjects")
 }
 
 model Enrollment {
@@ -235,6 +239,7 @@ model Enrollment {
   @@index([student_id])
   @@index([subject_id])
   @@index([faculty_id])
+  @@map("enrollments")
 }
 
 model User {
@@ -262,6 +267,7 @@ model User {
   @@index([role])
   @@index([institution_id])
   @@index([pin_number])
+  @@map("users")
 }
 
 model Profile {
@@ -280,6 +286,7 @@ model Profile {
 
   @@index([user_id])
   @@index([pin_number])
+  @@map("profiles")
 }
 
 model Assignment {
@@ -301,6 +308,7 @@ model Assignment {
   @@index([subject_id])
   @@index([faculty_id])
   @@index([due_date])
+  @@map("assignments")
 }
 
 model Submission {
@@ -322,6 +330,7 @@ model Submission {
   @@unique([assignment_id, student_id])
   @@index([assignment_id])
   @@index([student_id])
+  @@map("submissions")
 }
 
 model Attendance {
@@ -341,6 +350,7 @@ model Attendance {
   @@index([student_id])
   @@index([subject_id])
   @@index([date])
+  @@map("attendance")
 }
 
 model Notice {
@@ -361,6 +371,7 @@ model Notice {
   @@index([published_at])
   @@index([category])
   @@index([priority])
+  @@map("notices")
 }
 
 model Complaint {
@@ -382,6 +393,7 @@ model Complaint {
   @@index([student_id])
   @@index([status])
   @@index([category])
+  @@map("complaints")
 }
 
 model FeeStructure {
@@ -405,6 +417,7 @@ model FeeStructure {
   @@index([academic_year])
   @@index([course_type])
   @@index([branch_id])
+  @@map("fee_structures")
 }
 
 model FeePayment {
@@ -426,6 +439,7 @@ model FeePayment {
   @@index([student_id])
   @@index([fee_id])
   @@index([status])
+  @@map("fee_payments")
 }
 
 model Notification {
@@ -445,6 +459,7 @@ model Notification {
   @@index([user_id])
   @@index([type])
   @@index([created_at])
+  @@map("notifications")
 }
 
 model Permission {
@@ -461,6 +476,7 @@ model Permission {
 
   @@index([category])
   @@index([code])
+  @@map("permissions")
 }
 
 model RolePermission {
@@ -473,6 +489,7 @@ model RolePermission {
 
   @@unique([role, permission_id])
   @@index([role])
+  @@map("role_permissions")
 }
 
 model AuditLog {
@@ -494,6 +511,7 @@ model AuditLog {
   @@index([entity_id])
   @@index([action])
   @@index([created_at])
+  @@map("audit_logs")
 }
 
 model Session {
@@ -510,4 +528,5 @@ model Session {
   @@index([user_id])
   @@index([token])
   @@index([expires_at])
+  @@map("sessions")
 }

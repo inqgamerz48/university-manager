@@ -7,8 +7,9 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
-import { DollarSign, Calendar, CheckCircle, Clock, AlertTriangle, Plus } from "lucide-react";
+import { DollarSign, Calendar, CheckCircle, Clock, AlertTriangle, Plus, Download } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
+import jsPDF from "jspdf";
 
 interface FeePayment {
   id: string;
@@ -20,6 +21,7 @@ interface FeePayment {
     name: string;
     category: string;
   };
+  transaction_id?: string;
 }
 
 export function FeeTracking() {
@@ -62,6 +64,54 @@ export function FeeTracking() {
       month: "short",
       year: "numeric",
     });
+  };
+
+  const generateReceipt = (payment: FeePayment) => {
+    const doc = new jsPDF();
+
+    // Header
+    doc.setFontSize(22);
+    doc.setTextColor(40, 40, 40);
+    doc.text("UNIMANAGER", 105, 20, { align: "center" });
+
+    doc.setFontSize(16);
+    doc.text("FEE RECEIPT", 105, 30, { align: "center" });
+
+    // Details
+    doc.setFontSize(12);
+    doc.text(`Receipt ID: ${payment.transaction_id || payment.id.slice(0, 8).toUpperCase()}`, 20, 50);
+    doc.text(`Date: ${new Date().toLocaleDateString()}`, 20, 60);
+
+    // Student Info (Mock for now as we don't have name in payment obj easily accessible without prop drilling)
+    // doc.text(`Student Name: ${user?.email}`, 20, 70); 
+
+    // Payment Details Box
+    doc.setDrawColor(200);
+    doc.rect(20, 75, 170, 60);
+
+    doc.text("Fee Details:", 25, 85);
+    doc.setFont("helvetica", "bold");
+    doc.text(`${payment.fee_structure.name} (${payment.fee_structure.category})`, 25, 95);
+    doc.setFont("helvetica", "normal");
+
+    doc.text("Amount Paid:", 130, 85);
+    doc.setFont("helvetica", "bold");
+    doc.text(`Rs. ${payment.amount.toLocaleString()}`, 130, 95);
+    doc.setFont("helvetica", "normal");
+
+    doc.text("Payment Status:", 25, 110);
+    doc.setTextColor(0, 128, 0);
+    doc.text("PAID", 25, 120);
+    doc.setTextColor(40);
+
+    doc.text("Payment Date:", 130, 110);
+    doc.text(payment.paid_at ? new Date(payment.paid_at).toLocaleDateString() : "-", 130, 120);
+
+    // Footer
+    doc.setFontSize(10);
+    doc.text("This is a computer generated receipt.", 105, 150, { align: "center" });
+
+    doc.save(`Receipt-${payment.fee_structure.name}.pdf`);
   };
 
   const totalDue = payments.reduce((acc, p) => acc + p.amount, 0);
@@ -238,12 +288,20 @@ export function FeeTracking() {
                       )}
                     </div>
                   </div>
-                  {payment.status === "PENDING" && (
-                    <Button className="gold">
-                      <Plus className="h-4 w-4 mr-2" />
-                      Pay Now
-                    </Button>
-                  )}
+                  <div className="flex gap-2">
+                    {payment.status === "PENDING" && (
+                      <Button className="gold">
+                        <Plus className="h-4 w-4 mr-2" />
+                        Pay Now
+                      </Button>
+                    )}
+                    {payment.status === "PAID" && (
+                      <Button variant="outline" size="sm" onClick={() => generateReceipt(payment)}>
+                        <Download className="h-4 w-4 mr-2" />
+                        Receipt
+                      </Button>
+                    )}
+                  </div>
                 </div>
               </CardContent>
             </Card>

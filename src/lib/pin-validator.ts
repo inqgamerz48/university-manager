@@ -23,6 +23,7 @@ export const DEPARTMENTS: DeptInfo[] = [
   { code: "IE", name: "Industrial Engineering" },
 ];
 
+/** Default college code — used only as fallback. Actual code comes from institution DB. */
 export const COLLEGE_CODE = "622";
 
 export const YEAR_CODES: Record<string, string> = {
@@ -35,7 +36,15 @@ export const YEAR_CODES: Record<string, string> = {
   "29": "2029-30",
 };
 
-const PIN_REGEX = /^(\d{2})(\d{3})-([A-Za-z]{2})-(\d{3})$/;
+/**
+ * Dynamic PIN regex builder.
+ * Format: YY<collegeCode>-DEPT-NNN
+ * College code can be any alphanumeric string (set by admin per institution).
+ */
+function buildPinRegex(collegeCode: string): RegExp {
+  const escaped = collegeCode.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  return new RegExp(`^(\\d{2})(${escaped})-([A-Za-z]{2,4})-(\\d{3})$`);
+}
 
 export function validatePIN(pin: string, collegeCode: string = COLLEGE_CODE): PINValidationResult {
   const result: PINValidationResult = {
@@ -54,11 +63,12 @@ export function validatePIN(pin: string, collegeCode: string = COLLEGE_CODE): PI
   }
 
   const normalizedPin = pin.trim().toUpperCase();
-  const match = normalizedPin.match(PIN_REGEX);
+  const regex = buildPinRegex(collegeCode);
+  const match = normalizedPin.match(regex);
 
   if (!match) {
     result.errors.push(
-      `Invalid PIN format. Expected format: YY${collegeCode}-DEPT-PIN (e.g., 23622-CM-001)`
+      `Invalid PIN format. Expected: YY${collegeCode}-DEPT-PIN (e.g., 24${collegeCode}-CS-001)`
     );
     return result;
   }
@@ -127,8 +137,8 @@ export function getYearDisplay(yearCode: string): string {
   return YEAR_CODES[yearCode] || `20${yearCode}-${parseInt(yearCode) + 1}`;
 }
 
-export function formatPIN(pin: string): string {
-  const result = validatePIN(pin);
+export function formatPIN(pin: string, collegeCode?: string): string {
+  const result = validatePIN(pin, collegeCode);
   if (!result.valid) return pin;
 
   return `${result.year}${result.collegeCode}-${result.deptCode}-${result.studentPin}`;
@@ -141,17 +151,17 @@ export function isPINRegistered(pin: string, existingPins: string[]): boolean {
 
 export const PIN_EXAMPLES = {
   valid: [
-    "23622-CM-001",
+    "23622-CS-001",
     "23622-IT-015",
     "23622-EC-050",
     "24622-ME-100",
   ],
   invalid: [
     "invalid",
-    "23-622-CM-001",
-    "99622-CM-001",
+    "23-622-CS-001",
+    "99622-CS-001",
     "23622-XYZ-001",
-    "23622-CM-000",
-    "23622-CM-1000",
+    "23622-CS-000",
+    "23622-CS-1000",
   ],
 };

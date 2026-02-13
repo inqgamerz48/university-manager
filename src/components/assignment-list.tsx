@@ -12,7 +12,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useSubjects, createAssignment } from "@/hooks/use-dashboard";
-import { Plus, BookOpen, Calendar, Users, Clock } from "lucide-react";
+import { Plus, BookOpen, Calendar, Users, Clock, Trash2, Search } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 
 interface Assignment {
@@ -40,36 +40,57 @@ export function AssignmentList() {
     max_grade: "100",
     subject_id: "",
   });
+  const [searchQuery, setSearchQuery] = useState("");
   const { subjects, loading: subjectsLoading } = useSubjects();
   const supabase = createClient();
 
-  useEffect(() => {
-    async function fetchAssignments() {
-      const { data: facultyData } = await supabase
-        .from("faculty")
-        .select("id")
-        .eq("user_id", user?.id)
-        .single();
+  const fetchAssignments = async () => {
+    if (!user) return;
 
-      if (!facultyData) {
-        setLoading(false);
-        return;
-      }
+    const { data: facultyData } = await supabase
+      .from("faculty")
+      .select("id")
+      .eq("user_id", user.id)
+      .single();
 
-      const { data } = await supabase
-        .from("assignments")
-        .select("*")
-        .eq("faculty_id", facultyData.id)
-        .order("due_date", { ascending: false });
-
-      setAssignments(data || []);
+    if (!facultyData) {
       setLoading(false);
+      return;
     }
 
-    if (user) {
+    const { data } = await supabase
+      .from("assignments")
+      .select("*")
+      .eq("faculty_id", facultyData.id)
+      .order("due_date", { ascending: false });
+
+    setAssignments(data || []);
+    setLoading(false);
+  };
+
+  useEffect(() => {
+    fetchAssignments();
+  }, [user, supabase]);
+
+  const handleDelete = async (id: string) => {
+    if (!confirm("Are you sure you want to delete this assignment?")) return;
+
+    const { error } = await supabase.from("assignments").delete().eq("id", id);
+
+    if (error) {
+      toast({
+        title: "Error",
+        description: "Failed to delete assignment",
+        variant: "destructive",
+      });
+    } else {
+      toast({
+        title: "Success",
+        description: "Assignment deleted",
+      });
       fetchAssignments();
     }
-  }, [user, supabase]);
+  };
 
   const handleCreate = async () => {
     if (!newAssignment.title || !newAssignment.due_date || !newAssignment.subject_id) {
@@ -105,8 +126,7 @@ export function AssignmentList() {
         max_grade: "100",
         subject_id: "",
       });
-      // Refresh assignments
-      window.location.reload();
+      fetchAssignments();
     } else {
       toast({
         title: "Error",
@@ -139,114 +159,125 @@ export function AssignmentList() {
 
   return (
     <div className="container mx-auto px-4 py-8">
-      <div className="flex items-center justify-between mb-8">
+      <div className="flex items-center justify-between mb-8 gap-4">
         <div>
           <h1 className="text-3xl font-bold">Assignments</h1>
-          <p className="text-muted-foreground">Manage your assignments</p>
+          <p className="text-muted-foreground">Manage class assignments</p>
         </div>
-        <Dialog open={isCreateOpen} onOpenChange={setIsCreateOpen}>
-          <DialogTrigger asChild>
-            <Button className="gold">
-              <Plus className="h-4 w-4 mr-2" />
-              Create Assignment
-            </Button>
-          </DialogTrigger>
-          <DialogContent className="max-w-2xl">
-            <DialogHeader>
-              <DialogTitle>Create New Assignment</DialogTitle>
-              <DialogDescription>
-                Fill in the details to create a new assignment
-              </DialogDescription>
-            </DialogHeader>
-            <div className="grid gap-4 py-4">
-              <div className="grid gap-2">
-                <Label htmlFor="title">Title *</Label>
-                <Input
-                  id="title"
-                  value={newAssignment.title}
-                  onChange={(e) => setNewAssignment({ ...newAssignment, title: e.target.value })}
-                  placeholder="Enter assignment title"
-                />
-              </div>
-              <div className="grid gap-2">
-                <Label htmlFor="subject">Subject *</Label>
-                <Select
-                  value={newAssignment.subject_id}
-                  onValueChange={(value) => setNewAssignment({ ...newAssignment, subject_id: value })}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select subject" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {subjects.map((subject) => (
-                      <SelectItem key={subject.id} value={subject.id}>
-                        {subject.code} - {subject.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="grid gap-2">
-                <Label htmlFor="description">Description</Label>
-                <Textarea
-                  id="description"
-                  value={newAssignment.description}
-                  onChange={(e) => setNewAssignment({ ...newAssignment, description: e.target.value })}
-                  placeholder="Brief description of the assignment"
-                />
-              </div>
-              <div className="grid gap-2">
-                <Label htmlFor="instructions">Instructions</Label>
-                <Textarea
-                  id="instructions"
-                  value={newAssignment.instructions}
-                  onChange={(e) => setNewAssignment({ ...newAssignment, instructions: e.target.value })}
-                  placeholder="Detailed instructions for students"
-                  className="h-32"
-                />
-              </div>
-              <div className="grid grid-cols-2 gap-4">
-                <div className="grid gap-2">
-                  <Label htmlFor="due_date">Due Date *</Label>
-                  <Input
-                    id="due_date"
-                    type="datetime-local"
-                    value={newAssignment.due_date}
-                    onChange={(e) => setNewAssignment({ ...newAssignment, due_date: e.target.value })}
-                  />
-                </div>
-                <div className="grid gap-2">
-                  <Label htmlFor="max_grade">Max Grade</Label>
-                  <Input
-                    id="max_grade"
-                    type="number"
-                    value={newAssignment.max_grade}
-                    onChange={(e) => setNewAssignment({ ...newAssignment, max_grade: e.target.value })}
-                  />
-                </div>
-              </div>
-            </div>
-            <DialogFooter>
-              <Button variant="outline" onClick={() => setIsCreateOpen(false)}>
-                Cancel
-              </Button>
-              <Button className="gold" onClick={handleCreate}>
+        <div className="flex items-center gap-2">
+          <div className="relative">
+            <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+            <Input
+              placeholder="Search assignments..."
+              className="pl-8 w-[200px] lg:w-[300px]"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+            />
+          </div>
+          <Dialog open={isCreateOpen} onOpenChange={setIsCreateOpen}>
+            <DialogTrigger asChild>
+              <Button className="gold">
+                <Plus className="h-4 w-4 mr-2" />
                 Create Assignment
               </Button>
-            </DialogFooter>
-          </DialogContent>
-        </Dialog>
+            </DialogTrigger>
+            <DialogContent className="max-w-2xl">
+              <DialogHeader>
+                <DialogTitle>Create New Assignment</DialogTitle>
+                <DialogDescription>
+                  Fill in the details to create a new assignment
+                </DialogDescription>
+              </DialogHeader>
+              <div className="grid gap-4 py-4">
+                <div className="grid gap-2">
+                  <Label htmlFor="title">Title *</Label>
+                  <Input
+                    id="title"
+                    value={newAssignment.title}
+                    onChange={(e) => setNewAssignment({ ...newAssignment, title: e.target.value })}
+                    placeholder="Enter assignment title"
+                  />
+                </div>
+                <div className="grid gap-2">
+                  <Label htmlFor="subject">Subject *</Label>
+                  <Select
+                    value={newAssignment.subject_id}
+                    onValueChange={(value) => setNewAssignment({ ...newAssignment, subject_id: value })}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select subject" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {subjects.map((subject) => (
+                        <SelectItem key={subject.id} value={subject.id}>
+                          {subject.code} - {subject.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="grid gap-2">
+                  <Label htmlFor="description">Description</Label>
+                  <Textarea
+                    id="description"
+                    value={newAssignment.description}
+                    onChange={(e) => setNewAssignment({ ...newAssignment, description: e.target.value })}
+                    placeholder="Brief description of the assignment"
+                  />
+                </div>
+                <div className="grid gap-2">
+                  <Label htmlFor="instructions">Instructions</Label>
+                  <Textarea
+                    id="instructions"
+                    value={newAssignment.instructions}
+                    onChange={(e) => setNewAssignment({ ...newAssignment, instructions: e.target.value })}
+                    placeholder="Detailed instructions for students"
+                    className="h-32"
+                  />
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="grid gap-2">
+                    <Label htmlFor="due_date">Due Date *</Label>
+                    <Input
+                      id="due_date"
+                      type="datetime-local"
+                      value={newAssignment.due_date}
+                      onChange={(e) => setNewAssignment({ ...newAssignment, due_date: e.target.value })}
+                    />
+                  </div>
+                  <div className="grid gap-2">
+                    <Label htmlFor="max_grade">Max Grade</Label>
+                    <Input
+                      id="max_grade"
+                      type="number"
+                      value={newAssignment.max_grade}
+                      onChange={(e) => setNewAssignment({ ...newAssignment, max_grade: e.target.value })}
+                    />
+                  </div>
+                </div>
+              </div>
+              <DialogFooter>
+                <Button variant="outline" onClick={() => setIsCreateOpen(false)}>
+                  Cancel
+                </Button>
+                <Button className="gold" onClick={handleCreate}>
+                  Create Assignment
+                </Button>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
+        </div>
       </div>
 
       {loading ? (
         <div className="space-y-4">
           {[1, 2, 3].map((i) => (
-            <div key={i} className="h-32 bg-muted animate-pulse rounded-lg" />
+            <div key={i} className="h-48 bg-muted animate-pulse rounded-lg" />
           ))}
         </div>
-      ) : assignments.length > 0 ? (
+      ) : assignments.filter(a => a.title.toLowerCase().includes(searchQuery.toLowerCase())).length > 0 ? (
         <div className="grid gap-4">
-          {assignments.map((assignment) => (
+          {assignments.filter(a => a.title.toLowerCase().includes(searchQuery.toLowerCase())).map((assignment) => (
             <Card key={assignment.id} className="glass-card">
               <CardContent className="pt-6">
                 <div className="flex items-start justify-between">
@@ -275,9 +306,14 @@ export function AssignmentList() {
                       </div>
                     </div>
                   </div>
-                  <Button variant="outline" size="sm">
-                    View Details
-                  </Button>
+                  <div className="flex flex-col gap-2">
+                    <Button variant="outline" size="sm">
+                      View Details
+                    </Button>
+                    <Button variant="destructive" size="sm" onClick={() => handleDelete(assignment.id)}>
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
+                  </div>
                 </div>
               </CardContent>
             </Card>

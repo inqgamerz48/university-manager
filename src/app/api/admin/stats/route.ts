@@ -21,18 +21,15 @@ export async function GET() {
       .from("users")
       .select("*", { count: "exact", head: true });
 
-    const { data: roleCounts } = await supabase
+    const { data: usersWithRoles } = await supabase
       .from("users")
-      .select("role", { count: "exact", head: false })
-      .then(async (query) => {
-        const { data } = await query;
-        const counts: Record<string, number> = {};
-        data?.forEach((u: Record<string, unknown>) => {
-          const role = u.role as string;
-          counts[role] = (counts[role] || 0) + 1;
-        });
-        return { data: counts };
-      });
+      .select("role");
+
+    const roleCounts: Record<string, number> = {};
+    usersWithRoles?.forEach((u) => {
+      const role = u.role as string;
+      roleCounts[role] = (roleCounts[role] || 0) + 1;
+    });
 
     const roleStats = Object.entries(roleCounts || {}).map(([role, count]) => ({
       role,

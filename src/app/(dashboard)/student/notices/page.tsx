@@ -3,5 +3,6 @@
 import { NoticeManagement } from "@/components/notice-management";
 
 export default function StudentNoticesPage() {
-  return <NoticeManagement />;
+  return <NoticeManagement isReadOnly={true} />;
 }
+

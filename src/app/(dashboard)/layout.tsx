@@ -2,6 +2,8 @@ import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { DashboardShell } from "@/components/dashboard/DashboardShell";
 
+import { ErrorBoundary } from "@/components/error-boundary";
+
 export default async function DashboardLayout({
   children,
 }: {
@@ -19,6 +21,10 @@ export default async function DashboardLayout({
     redirect("/login");
   }
 
-  return <DashboardShell>{children}</DashboardShell>;
+  return (
+    <ErrorBoundary>
+      <DashboardShell>{children}</DashboardShell>
+    </ErrorBoundary>
+  );
 }
 

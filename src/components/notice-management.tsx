@@ -25,7 +25,7 @@ interface Notice {
   published_by_name: string;
 }
 
-export function NoticeManagement() {
+export function NoticeManagement({ isReadOnly = false }: { isReadOnly?: boolean }) {
   const { user } = useAuthStore();
   const { notices, loading } = useNotices();
   const [isCreateOpen, setIsCreateOpen] = useState(false);
@@ -119,91 +119,93 @@ export function NoticeManagement() {
       <div className="flex items-center justify-between mb-8">
         <div>
           <h1 className="text-3xl font-bold">Notices</h1>
-          <p className="text-muted-foreground">Manage and publish notices</p>
+          <p className="text-muted-foreground">{isReadOnly ? "View announcements" : "Manage and publish notices"}</p>
         </div>
-        <Dialog open={isCreateOpen} onOpenChange={setIsCreateOpen}>
-          <DialogTrigger asChild>
-            <Button className="gold">
-              <Plus className="h-4 w-4 mr-2" />
-              Publish Notice
-            </Button>
-          </DialogTrigger>
-          <DialogContent className="max-w-2xl">
-            <DialogHeader>
-              <DialogTitle>Publish New Notice</DialogTitle>
-              <DialogDescription>
-                Create and publish a notice for students and faculty
-              </DialogDescription>
-            </DialogHeader>
-            <div className="grid gap-4 py-4">
-              <div className="grid gap-2">
-                <Label htmlFor="title">Title *</Label>
-                <Input
-                  id="title"
-                  value={newNotice.title}
-                  onChange={(e) => setNewNotice({ ...newNotice, title: e.target.value })}
-                  placeholder="Notice title"
-                />
-              </div>
-              <div className="grid grid-cols-2 gap-4">
-                <div className="grid gap-2">
-                  <Label htmlFor="priority">Priority</Label>
-                  <Select
-                    value={newNotice.priority}
-                    onValueChange={(value) => setNewNotice({ ...newNotice, priority: value })}
-                  >
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="low">Low</SelectItem>
-                      <SelectItem value="normal">Normal</SelectItem>
-                      <SelectItem value="high">High</SelectItem>
-                      <SelectItem value="urgent">Urgent</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div className="grid gap-2">
-                  <Label htmlFor="category">Category</Label>
-                  <Select
-                    value={newNotice.category}
-                    onValueChange={(value) => setNewNotice({ ...newNotice, category: value })}
-                  >
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="general">General</SelectItem>
-                      <SelectItem value="academic">Academic</SelectItem>
-                      <SelectItem value="event">Event</SelectItem>
-                      <SelectItem value="exam">Exam</SelectItem>
-                      <SelectItem value="fee">Fee</SelectItem>
-                      <SelectItem value="placement">Placement</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-              </div>
-              <div className="grid gap-2">
-                <Label htmlFor="content">Content *</Label>
-                <Textarea
-                  id="content"
-                  value={newNotice.content}
-                  onChange={(e) => setNewNotice({ ...newNotice, content: e.target.value })}
-                  placeholder="Notice content..."
-                  className="h-48"
-                />
-              </div>
-            </div>
-            <DialogFooter>
-              <Button variant="outline" onClick={() => setIsCreateOpen(false)}>
-                Cancel
-              </Button>
-              <Button className="gold" onClick={handleCreate}>
+        {!isReadOnly && (
+          <Dialog open={isCreateOpen} onOpenChange={setIsCreateOpen}>
+            <DialogTrigger asChild>
+              <Button className="gold">
+                <Plus className="h-4 w-4 mr-2" />
                 Publish Notice
               </Button>
-            </DialogFooter>
-          </DialogContent>
-        </Dialog>
+            </DialogTrigger>
+            <DialogContent className="max-w-2xl">
+              <DialogHeader>
+                <DialogTitle>Publish New Notice</DialogTitle>
+                <DialogDescription>
+                  Create and publish a notice for students and faculty
+                </DialogDescription>
+              </DialogHeader>
+              <div className="grid gap-4 py-4">
+                <div className="grid gap-2">
+                  <Label htmlFor="title">Title *</Label>
+                  <Input
+                    id="title"
+                    value={newNotice.title}
+                    onChange={(e) => setNewNotice({ ...newNotice, title: e.target.value })}
+                    placeholder="Notice title"
+                  />
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="grid gap-2">
+                    <Label htmlFor="priority">Priority</Label>
+                    <Select
+                      value={newNotice.priority}
+                      onValueChange={(value) => setNewNotice({ ...newNotice, priority: value })}
+                    >
+                      <SelectTrigger>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="low">Low</SelectItem>
+                        <SelectItem value="normal">Normal</SelectItem>
+                        <SelectItem value="high">High</SelectItem>
+                        <SelectItem value="urgent">Urgent</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="grid gap-2">
+                    <Label htmlFor="category">Category</Label>
+                    <Select
+                      value={newNotice.category}
+                      onValueChange={(value) => setNewNotice({ ...newNotice, category: value })}
+                    >
+                      <SelectTrigger>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="general">General</SelectItem>
+                        <SelectItem value="academic">Academic</SelectItem>
+                        <SelectItem value="event">Event</SelectItem>
+                        <SelectItem value="exam">Exam</SelectItem>
+                        <SelectItem value="fee">Fee</SelectItem>
+                        <SelectItem value="placement">Placement</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+                <div className="grid gap-2">
+                  <Label htmlFor="content">Content *</Label>
+                  <Textarea
+                    id="content"
+                    value={newNotice.content}
+                    onChange={(e) => setNewNotice({ ...newNotice, content: e.target.value })}
+                    placeholder="Notice content..."
+                    className="h-48"
+                  />
+                </div>
+              </div>
+              <DialogFooter>
+                <Button variant="outline" onClick={() => setIsCreateOpen(false)}>
+                  Cancel
+                </Button>
+                <Button className="gold" onClick={handleCreate}>
+                  Publish Notice
+                </Button>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
+        )}
       </div>
 
       {loading ? (

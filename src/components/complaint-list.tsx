@@ -28,7 +28,9 @@ interface Complaint {
 
 export function ComplaintList({ isAdmin = false }: { isAdmin?: boolean }) {
   const { user } = useAuthStore();
-  const { complaints, loading } = useStudentComplaints();
+  const studentHook = useStudentComplaints();
+  const [adminComplaints, setAdminComplaints] = useState<Complaint[]>([]);
+  const [adminLoading, setAdminLoading] = useState(true);
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [newComplaint, setNewComplaint] = useState({
     title: "",
@@ -37,6 +39,23 @@ export function ComplaintList({ isAdmin = false }: { isAdmin?: boolean }) {
     priority: "normal",
   });
   const supabase = createClient();
+
+  // Admin: fetch ALL complaints
+  useEffect(() => {
+    if (!isAdmin) return;
+    async function fetchAll() {
+      const { data } = await supabase
+        .from("complaints")
+        .select("*")
+        .order("created_at", { ascending: false });
+      setAdminComplaints(data || []);
+      setAdminLoading(false);
+    }
+    fetchAll();
+  }, [isAdmin, supabase]);
+
+  const complaints = isAdmin ? adminComplaints : studentHook.complaints;
+  const loading = isAdmin ? adminLoading : studentHook.loading;
 
   const formatDate = (dateString: string) => {
     return new Date(dateString).toLocaleDateString("en-IN", {

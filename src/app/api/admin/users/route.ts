@@ -113,10 +113,11 @@ export async function POST(request: NextRequest) {
     }
 
     // 3. Update Profile
-    console.log("[CREATE USER] Upserting profile...");
+    console.log("[CREATE USER] Upserting profile...", newUser.user.id);
     const { error: profileError } = await adminClient
       .from("profiles")
       .upsert({
+        id: newUser.user.id,  // Use id, not user_id
         user_id: newUser.user.id,
         full_name,
         pin_number,
@@ -135,7 +136,7 @@ export async function POST(request: NextRequest) {
         institution_id,
         employee_id: pin_number || `EMP-${Date.now()}`,
         branch_id: branch_id || null
-      });
+      }, { onConflict: 'user_id', ignoreDuplicates: true });
       console.log("[CREATE USER] Faculty created", { facultyError });
       if (facultyError) throw facultyError;
     } else if (role === 'STUDENT') {
@@ -151,7 +152,7 @@ export async function POST(request: NextRequest) {
         admission_year: parseInt(admission_year),
         academic_year: "YEAR_1",
         current_semester: "SEM_1"
-      });
+      }, { onConflict: 'user_id', ignoreDuplicates: true });
       console.log("[CREATE USER] Student created", { studentError });
       if (studentError) throw studentError;
     }

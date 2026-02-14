@@ -21,14 +21,29 @@ export async function createBranch(data: {
 
         if (!user) return { success: false, error: "Unauthorized" };
 
-        // Check if Admin
-        const { data: userData } = await getAdminClient().from('users').select('role').eq('id', user.id).single();
+        // Check if Admin and get institution_id
+        const adminClient = getAdminClient();
+        const { data: userData, error: userError } = await adminClient
+            .from('users')
+            .select('role, institution_id')
+            .eq('id', user.id)
+            .single();
+
+        if (userError || !userData) {
+            return { success: false, error: "User not found" };
+        }
+
         if (userData?.role !== 'ADMIN' && userData?.role !== 'SUPER_ADMIN') {
             return { success: false, error: "Forbidden: Admin only" };
         }
 
-        const { error } = await getAdminClient().from("branches").insert([{
+        if (!userData.institution_id) {
+            return { success: false, error: "No institution assigned to admin" };
+        }
+
+        const { error } = await adminClient.from("branches").insert([{
             ...data,
+            institution_id: userData.institution_id,
             is_active: true
         }]);
 
@@ -69,16 +84,39 @@ export async function createSubject(data: {
 
         if (!user) return { success: false, error: "Unauthorized" };
 
-        const { data: userData } = await getAdminClient().from('users').select('role').eq('id', user.id).single();
+        // Check if Admin and get institution_id
+        const adminClient = getAdminClient();
+        const { data: userData, error: userError } = await adminClient
+            .from('users')
+            .select('role, institution_id')
+            .eq('id', user.id)
+            .single();
+
+        if (userError || !userData) {
+            return { success: false, error: "User not found" };
+        }
+
         if (userData?.role !== 'ADMIN' && userData?.role !== 'SUPER_ADMIN') {
             return { success: false, error: "Forbidden: Admin only" };
         }
 
-        const { error } = await getAdminClient().from("subjects").insert([{
+        if (!userData.institution_id) {
+            return { success: false, error: "No institution assigned to admin" };
+        }
+
+        // Get branch info for the subject
+        const { data: branchData } = await adminClient
+            .from('branches')
+            .select('course_type')
+            .eq('id', data.branch_id)
+            .single();
+
+        const { error } = await adminClient.from("subjects").insert([{
             ...data,
+            institution_id: userData.institution_id,
+            academic_year: new Date().getFullYear().toString(),
+            semester: `SEM_${data.semester}`,
             is_active: true,
-            // We need to fetch faculty_id? Or just leave it null for later assignment?
-            // For now, allow null faculty.
         }]);
 
         if (error) {

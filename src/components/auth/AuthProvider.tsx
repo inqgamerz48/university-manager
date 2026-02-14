@@ -22,21 +22,24 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
       const { data: profile } = await supabase
         .from("profiles")
-        .select("full_name, role")
+        .select("full_name")
         .eq("user_id", session.user.id)
         .single();
 
-      const { data: permissions } = await supabase
-        .from("role_permissions")
-        .select("permission_code")
-        .eq("role", profile?.role || "STUDENT");
+      const { data: userData } = await supabase
+        .from("users")
+        .select("role")
+        .eq("id", session.user.id)
+        .single();
+
+      const role = userData?.role || "STUDENT";
 
       setUser({
         id: session.user.id,
         email: session.user.email || "",
-        role: (profile?.role || "STUDENT") as UserRole,
+        role: role as UserRole,
         fullName: profile?.full_name || "User",
-        permissions: permissions?.map((p) => p.permission_code) || [],
+        permissions: [],
       });
     });
 

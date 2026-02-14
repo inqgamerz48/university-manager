@@ -8,6 +8,7 @@ import { Label } from "@/components/label";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { toast } from "@/hooks/use-toast";
 import { createClient } from "@/lib/supabase/client";
+import { useAuthStore } from "@/stores/auth-store";
 import { Mail, Lock, Eye, EyeOff } from "lucide-react";
 
 export function LoginForm() {
@@ -42,6 +43,8 @@ export function LoginForm() {
     return isValid;
   };
 
+  const { setUser } = useAuthStore();
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!validateForm()) return;
@@ -59,13 +62,27 @@ export function LoginForm() {
       toast({ title: "Success", description: "Welcome back!" });
 
       if (data.user) {
-        const { data: profile } = await supabase
+        const { data: userData } = await supabase
           .from("users")
           .select("role")
           .eq("id", data.user.id)
           .single();
 
-        const role = profile?.role || "STUDENT";
+        const { data: profile } = await supabase
+          .from("profiles")
+          .select("full_name")
+          .eq("user_id", data.user.id)
+          .single();
+
+        const role = userData?.role || "STUDENT";
+        
+        setUser({
+          id: data.user.id,
+          email: data.user.email || "",
+          role: role as any,
+          fullName: profile?.full_name || "User",
+        });
+
         let redirectPath = "/student/dashboard";
 
         if (role === "FACULTY") redirectPath = "/faculty/dashboard";

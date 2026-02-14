@@ -3,7 +3,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { hasPermission } from "@/lib/rbac-server";
 import { createAuditLog } from "@/lib/audit";
 
-import { supabaseAdmin } from "@/lib/supabase/admin";
+import { getAdminClient } from "@/lib/supabase/admin";
 
 export async function POST(request: NextRequest) {
   const supabase = await createClient();
@@ -23,7 +23,7 @@ export async function POST(request: NextRequest) {
     const { email, password, full_name, role, pin_number, branch_id, admission_year } = body;
 
     // Get Admin's institution_id
-    const { data: adminUser } = await supabaseAdmin
+    const { data: adminUser } = await getAdminClient()
       .from("users")
       .select("institution_id")
       .eq("id", user.id)
@@ -36,7 +36,7 @@ export async function POST(request: NextRequest) {
     }
 
     // 1. Create user in Auth (using Service Role)
-    const { data: newUser, error: createError } = await supabaseAdmin.auth.admin.createUser({
+    const { data: newUser, error: createError } = await getAdminClient().auth.admin.createUser({
       email,
       password,
       email_confirm: true,
@@ -48,7 +48,7 @@ export async function POST(request: NextRequest) {
 
     // 2. Update Public Users Role (Trigger might have created it, but with default role)
     // We upsert to be safe in case trigger is slow or fast
-    const { error: userError } = await supabaseAdmin
+    const { error: userError } = await getAdminClient()
       .from("users")
       .upsert({
         id: newUser.user.id,
@@ -60,7 +60,7 @@ export async function POST(request: NextRequest) {
     if (userError) throw userError;
 
     // 3. Update Profile (Trigger might have created it)
-    const { error: profileError } = await supabaseAdmin
+    const { error: profileError } = await getAdminClient()
       .from("profiles")
       .upsert({
         id: newUser.user.id,
@@ -73,7 +73,7 @@ export async function POST(request: NextRequest) {
 
     // 4. If Faculty or Student, create specific record
     if (role === 'FACULTY') {
-      await supabaseAdmin.from('faculty').upsert({
+      await getAdminClient().from('faculty').upsert({
         user_id: newUser.user.id,
         institution_id,
         employee_id: pin_number || `EMP-${Date.now()}`,
@@ -83,7 +83,7 @@ export async function POST(request: NextRequest) {
       if (!branch_id || !admission_year) {
         throw new Error("Branch and Admission Year are required for Students");
       }
-      await supabaseAdmin.from('students').upsert({
+      await getAdminClient().from('students').upsert({
         user_id: newUser.user.id,
         institution_id,
         branch_id,

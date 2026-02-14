@@ -1,6 +1,6 @@
 "use server";
 
-import { supabaseAdmin } from "@/lib/supabase/admin";
+import { getAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
 import { createAuditLog } from "@/lib/audit";
 
@@ -22,12 +22,12 @@ export async function createBranch(data: {
         if (!user) return { success: false, error: "Unauthorized" };
 
         // Check if Admin
-        const { data: userData } = await supabaseAdmin.from('users').select('role').eq('id', user.id).single();
+        const { data: userData } = await getAdminClient().from('users').select('role').eq('id', user.id).single();
         if (userData?.role !== 'ADMIN' && userData?.role !== 'SUPER_ADMIN') {
             return { success: false, error: "Forbidden: Admin only" };
         }
 
-        const { error } = await supabaseAdmin.from("branches").insert([{
+        const { error } = await getAdminClient().from("branches").insert([{
             ...data,
             is_active: true
         }]);
@@ -69,12 +69,12 @@ export async function createSubject(data: {
 
         if (!user) return { success: false, error: "Unauthorized" };
 
-        const { data: userData } = await supabaseAdmin.from('users').select('role').eq('id', user.id).single();
+        const { data: userData } = await getAdminClient().from('users').select('role').eq('id', user.id).single();
         if (userData?.role !== 'ADMIN' && userData?.role !== 'SUPER_ADMIN') {
             return { success: false, error: "Forbidden: Admin only" };
         }
 
-        const { error } = await supabaseAdmin.from("subjects").insert([{
+        const { error } = await getAdminClient().from("subjects").insert([{
             ...data,
             is_active: true,
             // We need to fetch faculty_id? Or just leave it null for later assignment?
